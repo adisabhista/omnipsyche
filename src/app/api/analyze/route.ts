@@ -2,7 +2,7 @@ import { GoogleGenerativeAI } from "@google/generative-ai";
 import { NextResponse } from "next/server";
 import { UserProfile } from "@/types/personality";
 
-const apiKey = process.env.NEXT_PUBLIC_GEMINI_API_KEY;
+const apiKey = process.env.GEMINI_API_KEY;
 
 export async function POST(req: Request) {
     if (!apiKey) {
