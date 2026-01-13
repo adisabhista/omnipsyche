@@ -1,3 +1,4 @@
+# Using Node 20-alpine for Next.js 15+ compatibility
 FROM node:20-alpine AS base
 
 # Install dependencies only when needed
