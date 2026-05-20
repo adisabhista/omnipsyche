@@ -1,20 +1,12 @@
 import type { Metadata } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
+import AppShell from "@/components/AppShell";
+import AuthSessionProvider from "@/components/AuthSessionProvider";
+import ThemeProvider from "@/components/theme-provider";
 import "./globals.css";
-
-const geistSans = Geist({
-  variable: "--font-geist-sans",
-  subsets: ["latin"],
-});
-
-const geistMono = Geist_Mono({
-  variable: "--font-geist-mono",
-  subsets: ["latin"],
-});
 
 export const metadata: Metadata = {
   title: "OmniPsyche",
-  description: "Advanced Personality Synthesis Engine",
+  description: "Platform intelijensi kepribadian modular",
 };
 
 export default function RootLayout({
@@ -23,11 +15,13 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en">
-      <body
-        className={`${geistSans.variable} ${geistMono.variable} antialiased`}
-      >
-        {children}
+    <html lang="id" suppressHydrationWarning>
+      <body className="antialiased">
+        <ThemeProvider>
+          <AuthSessionProvider>
+            <AppShell>{children}</AppShell>
+          </AuthSessionProvider>
+        </ThemeProvider>
       </body>
     </html>
   );

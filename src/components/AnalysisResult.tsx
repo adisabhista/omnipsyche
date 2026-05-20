@@ -19,9 +19,9 @@ const AnalysisResult: React.FC<AnalysisResultProps> = ({ markdown, isLoading }) 
                     <div className="absolute inset-4 border-b-4 border-pink-500 rounded-full animate-spin"></div>
                 </div>
                 <p className="mt-6 text-cyan-400 font-mono animate-pulse text-lg">
-                    SYNTHESIZING PSYCHE DATA...
+                    MENYUSUN DATA PSIKE...
                 </p>
-                <p className="text-xs text-gray-500 mt-2">Connecting to Neural Core (Gemini 3.0)</p>
+                <p className="text-xs text-gray-500 mt-2">Menghubungkan ke inti analisis</p>
             </div>
         );
     }
@@ -38,22 +38,22 @@ const AnalysisResult: React.FC<AnalysisResultProps> = ({ markdown, isLoading }) 
             <div className="prose prose-invert prose-cyan max-w-none">
                 <ReactMarkdown
                     components={{
-                        h1: ({ node, ...props }) => (
+                        h1: (props) => (
                             <h1 className="text-4xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-cyan-400 via-purple-400 to-pink-400 mb-8" {...props} />
                         ),
-                        h2: ({ node, ...props }) => (
+                        h2: (props) => (
                             <h2 className="text-2xl font-semibold text-cyan-300 mt-8 mb-4 flex items-center gap-2" {...props} />
                         ),
-                        strong: ({ node, ...props }) => (
+                        strong: (props) => (
                             <strong className="text-purple-300 font-bold" {...props} />
                         ),
-                        li: ({ node, ...props }) => (
+                        li: (props) => (
                             <li className="text-gray-300 my-1" {...props} />
                         ),
-                        p: ({ node, ...props }) => (
+                        p: (props) => (
                             <p className="text-gray-300 leading-relaxed mb-4" {...props} />
                         ),
-                        hr: ({ node, ...props }) => (
+                        hr: (props) => (
                             <hr className="hidden border-none" {...props} />
                         ),
                     }}

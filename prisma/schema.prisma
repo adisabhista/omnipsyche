@@ -1,0 +1,175 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id                   String                @id @default(cuid())
+  name                 String?
+  email                String                @unique
+  passwordHash         String
+  image                String?
+  createdAt            DateTime              @default(now())
+  updatedAt            DateTime              @updatedAt
+  profiles             UserProfile[]
+  analyses             AnalysisResult[]
+  narrativePredictions NarrativePrediction[]
+  books                UserBook[]
+  settings             UserSettings?
+
+  @@index([createdAt])
+}
+
+model UserProfile {
+  id                  String                @id @default(cuid())
+  userId              String?
+  user                User?                 @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name                String
+  mbti                String                @default("unknown")
+  enneagramType       String                @default("unknown")
+  enneagramWing       String                @default("unknown")
+  enneagramTritype    String                @default("")
+  attitudinalPsyche   String                @default("unknown")
+  instinctualVariant  String                @default("unknown")
+  socionics           String                @default("unknown")
+  temperament         String                @default("unknown")
+  riasec              String                @default("")
+  bigFive             Json?
+  rawProfile          Json
+  createdAt           DateTime              @default(now())
+  updatedAt           DateTime              @updatedAt
+  analyses            AnalysisResult[]
+  narrativePredictions NarrativePrediction[]
+  careerInsights      CareerInsight[]
+  bookInsights        BookInsight[]
+
+  @@index([userId])
+  @@index([createdAt])
+}
+
+model AnalysisResult {
+  id            String      @id @default(cuid())
+  userId        String?
+  user          User?       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  profileId     String
+  profile       UserProfile @relation(fields: [profileId], references: [id], onDelete: Cascade)
+  markdown      String
+  model         String
+  inputSnapshot Json?
+  parsedJson    Json?
+  createdAt     DateTime    @default(now())
+  bookInsights  BookInsight[]
+
+  @@index([userId])
+  @@index([profileId])
+  @@index([createdAt])
+}
+
+model NarrativePrediction {
+  id         String       @id @default(cuid())
+  userId     String?
+  user       User?        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  profileId  String?
+  profile    UserProfile? @relation(fields: [profileId], references: [id], onDelete: SetNull)
+  inputText  String
+  prediction Json
+  model      String
+  createdAt  DateTime     @default(now())
+
+  @@index([userId])
+  @@index([profileId])
+  @@index([createdAt])
+}
+
+model CareerInsight {
+  id        String      @id @default(cuid())
+  profileId String
+  profile   UserProfile @relation(fields: [profileId], references: [id], onDelete: Cascade)
+  content   Json
+  model     String?
+  createdAt DateTime    @default(now())
+  updatedAt DateTime    @updatedAt
+
+  @@index([profileId])
+  @@index([createdAt])
+}
+
+model BookInsight {
+  id        String      @id @default(cuid())
+  profileId String
+  profile   UserProfile @relation(fields: [profileId], references: [id], onDelete: Cascade)
+  analysisId String?
+  analysis  AnalysisResult? @relation(fields: [analysisId], references: [id], onDelete: SetNull)
+  content   Json
+  model     String?
+  createdAt DateTime    @default(now())
+  updatedAt DateTime    @updatedAt
+
+  @@index([profileId])
+  @@index([analysisId])
+  @@index([createdAt])
+}
+
+model UserBook {
+  id          String   @id @default(cuid())
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  title       String
+  author      String?
+  description String?
+  categories  Json?
+  thumbnail   String?
+  isbn10      String?
+  isbn13      String?
+  publishedAt String?
+  source      String?
+  sourceId    String?
+  status      String   @default("owned")
+  rating      Int?
+  notes       String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([userId])
+}
+
+model UserSettings {
+  id        String   @id @default(cuid())
+  userId    String   @unique
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  themeMode String   @default("system")
+
+  displayName String?
+  birthYear   Int?
+  ageRange    String?
+  gender      String?
+  location    String?
+  shortBio    String?
+
+  educationLevel   String?
+  fieldOfStudy     String?
+  institution      String?
+  graduationStatus String?
+  learningGoals    Json?
+
+  currentStatus      String?
+  currentRole        String?
+  targetCareer       String?
+  careerInterests    Json?
+  preferredWorkStyle String?
+
+  hobbies            Json?
+  interests          Json?
+  favoriteTopics     Json?
+  favoriteBookGenres Json?
+  skillsToImprove    Json?
+  dislikedTopics     Json?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}

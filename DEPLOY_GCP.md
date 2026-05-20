@@ -1,37 +1,59 @@
-# 🚀 Operation Cloud Ascendance: Deployment Guide (GCP)
+# Operation Cloud Ascendance: Deployment Guide (GCP)
 
-This guide outlines the steps to deploy **OmniPsyche** to **Google Cloud Run** using the Google Cloud CLI (`gcloud`).
+This guide deploys **OmniPsyche** to **Google Cloud Run** using Vertex AI for Gemini. OmniPsyche uses IAM/service account authentication and does not use Gemini API keys.
 
 ## Prerequisites
 
-1.  **Google Cloud SDK**: Ensure `gcloud` CLI is installed and authenticated.
-2.  **Docker**: Ensure Docker is running locally (if building locally).
-3.  **GCP Project**: You need an active Google Cloud Project with billing enabled.
+1. Google Cloud CLI installed and authenticated.
+2. Docker running locally if building locally.
+3. A Google Cloud project with billing enabled.
+4. A Cloud Run service account with the **Vertex AI User** role (`roles/aiplatform.user`).
 
 ## Step 1: Setup & Configuration
 
-Set your project ID and region variables for the session:
+Set project and region variables for the session:
 
 ```bash
-# Replace with your actual Project ID
 export PROJECT_ID="your-gcp-project-id"
-export REGION="asia-southeast2" # Jakarta region (or us-central1)
+export REGION="us-central1"
 export SERVICE_NAME="omnipsyche"
+export SERVICE_ACCOUNT="omnipsyche-run@$PROJECT_ID.iam.gserviceaccount.com"
 
 gcloud config set project $PROJECT_ID
 ```
 
 ## Step 2: Enable Required APIs
 
-Enable the Artifact Registry and Cloud Run APIs:
+Enable Artifact Registry, Cloud Build, Cloud Run, and Vertex AI:
 
 ```bash
-gcloud services enable artifactregistry.googleapis.com run.googleapis.com
+gcloud services enable \
+    artifactregistry.googleapis.com \
+    cloudbuild.googleapis.com \
+    run.googleapis.com \
+    aiplatform.googleapis.com
 ```
 
-## Step 3: Create Artifact Registry Repository
+## Step 3: Create or Configure the Cloud Run Service Account
 
-Create a Docker repository to store your container images:
+Create a service account if you do not already have one:
+
+```bash
+gcloud iam service-accounts create omnipsyche-run \
+    --display-name="OmniPsyche Cloud Run"
+```
+
+Grant Vertex AI access:
+
+```bash
+gcloud projects add-iam-policy-binding $PROJECT_ID \
+    --member="serviceAccount:$SERVICE_ACCOUNT" \
+    --role="roles/aiplatform.user"
+```
+
+## Step 4: Create Artifact Registry Repository
+
+Create a Docker repository for container images:
 
 ```bash
 gcloud artifacts repositories create omnipsyche-repo \
@@ -40,32 +62,25 @@ gcloud artifacts repositories create omnipsyche-repo \
     --description="Docker repository for OmniPsyche"
 ```
 
-## Step 4: Build & Push Container
+## Step 5: Build & Push Container
 
-Build the image using Cloud Build (no local Docker required) or local Docker.
-
-**Option A: Using Cloud Build (Recommended - Easiest)**
-This uploads your source code and builds it on Google's servers.
+Using Cloud Build:
 
 ```bash
 gcloud builds submit --tag $REGION-docker.pkg.dev/$PROJECT_ID/omnipsyche-repo/$SERVICE_NAME:latest .
 ```
 
-**Option B: Local Build & Push**
+Or build and push locally:
+
 ```bash
-# Configure Docker to authenticate with GCP
 gcloud auth configure-docker $REGION-docker.pkg.dev
-
-# Build
 docker build -t $REGION-docker.pkg.dev/$PROJECT_ID/omnipsyche-repo/$SERVICE_NAME:latest .
-
-# Push
 docker push $REGION-docker.pkg.dev/$PROJECT_ID/omnipsyche-repo/$SERVICE_NAME:latest
 ```
 
-## Step 5: Deploy to Cloud Run
+## Step 6: Deploy to Cloud Run
 
-Deploy the container to Cloud Run. **Crucial:** This is where we inject the Gemini API Key.
+Deploy the container with Vertex AI environment variables:
 
 ```bash
 gcloud run deploy $SERVICE_NAME \
@@ -73,23 +88,24 @@ gcloud run deploy $SERVICE_NAME \
     --region $REGION \
     --platform managed \
     --allow-unauthenticated \
+    --service-account $SERVICE_ACCOUNT \
     --port 3000 \
     --memory 1Gi \
     --cpu 1 \
     --timeout 300 \
-    --set-env-vars NEXT_PUBLIC_GEMINI_API_KEY="YOUR_ACTUAL_API_KEY_HERE"
+    --set-env-vars GOOGLE_VERTEX_AI_PROJECT_ID="$PROJECT_ID",GOOGLE_VERTEX_AI_LOCATION="us-central1",GOOGLE_GENAI_USE_VERTEXAI="true",GEMINI_PERSONALITY_MODEL="gemini-2.0-flash"
 ```
 
-*Note: Replace `YOUR_ACTUAL_API_KEY_HERE` with your real Gemini API key.*
+Do not set `GEMINI_API_KEY` or `NEXT_PUBLIC_GEMINI_API_KEY`.
 
-## Step 6: Verification
+## Step 7: Verification
 
-Once deployed, the command will output a **Service URL** (e.g., `https://omnipsyche-xyz-uc.a.run.app`).
+After deployment, open the Cloud Run service URL and test:
 
-1.  Open the URL in your browser.
-2.  Test the "Narrative Mirror" or "Grand Synthesis" features.
-3.  Verify that the analysis completes without timeout (Cloud Run allows up to 60 mins, default is 5 mins).
+1. Narrative Mirror.
+2. Grand Synthesis.
+3. Server logs for Vertex AI permission or model-region errors.
 
----
+If Vertex AI returns a permission error, confirm the deployed service account has `roles/aiplatform.user`. If the model is unavailable, set `GOOGLE_VERTEX_AI_LOCATION` and `GEMINI_PERSONALITY_MODEL` to a supported pairing for your project.
 
-**Mission Accomplished.** 🛸
+Fallback compatibility names are also supported by the server: `GOOGLE_CLOUD_PROJECT`, `GOOGLE_CLOUD_PROJECT_ID`, `GOOGLE_CLOUD_LOCATION`, and `VERTEX_AI_MODEL`.
