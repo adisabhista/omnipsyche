@@ -99,3 +99,11 @@ export async function generatePersonalitySynthesis(prompt: string): Promise<stri
 export async function generateNarrativePrediction(prompt: string): Promise<string> {
     return generateText(prompt);
 }
+
+export async function generateProfileValidation(prompt: string): Promise<string> {
+    return generateText(prompt);
+}
+
+export async function generateTipologiExploration(prompt: string): Promise<string> {
+    return generateText(prompt);
+}

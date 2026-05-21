@@ -5,9 +5,9 @@ import Link from "next/link";
 import { useSession } from "next-auth/react";
 import { Brain, Loader2, Sparkles } from "lucide-react";
 import AnalysisResult from "@/components/AnalysisResult";
+import { AnalysisResultPanel } from "@/components/analysis/analysis-result-panel";
 import { RightRail, StatusList, SurfaceCard } from "@/components/PlatformCards";
 import { createExcerpt, formatDateTime } from "@/lib/analysis-format";
-import { personalityAnalysisSchema } from "@/lib/personality-json-schema";
 
 interface StoredProfile {
     id: string;
@@ -22,42 +22,9 @@ interface StoredAnalysis {
     createdAt: string;
     markdown: string;
     model: string;
+    profileJson?: unknown;
     parsedJson?: unknown;
-}
-
-function ConsistencyAudit({ analysis }: { analysis: StoredAnalysis }) {
-    const parsed = personalityAnalysisSchema.safeParse(analysis.parsedJson);
-
-    if (!parsed.success) {
-        return (
-            <SurfaceCard title="Audit Konsistensi">
-                <p className="text-sm leading-6 text-slate-500">Audit konsistensi belum tersedia untuk analisis ini.</p>
-            </SurfaceCard>
-        );
-    }
-
-    const audit = parsed.data.consistency_audit;
-
-    return (
-        <SurfaceCard title="Audit Konsistensi">
-            <StatusList
-                items={[
-                    { label: "Framework", value: audit.frameworks_used.join(", ") || "Belum Ada" },
-                    { label: "Inferensi", value: audit.inferred_fields.join(", ") || "Tidak Ada" },
-                    { label: "Peringatan", value: audit.warnings.length ? `${audit.warnings.length} Catatan` : "Tidak Ada" },
-                ]}
-            />
-            {audit.warnings.length > 0 && (
-                <div className="mt-4 space-y-2">
-                    {audit.warnings.map((warning) => (
-                        <p key={warning} className="rounded-lg border border-cyan-300/20 bg-cyan-300/10 p-3 text-sm leading-6 text-slate-300">
-                            {warning}
-                        </p>
-                    ))}
-                </div>
-            )}
-        </SurfaceCard>
-    );
+    rawResponse?: unknown;
 }
 
 export default function AnalisisPage() {
@@ -128,6 +95,7 @@ export default function AnalisisPage() {
                 markdown: data.markdown,
                 model: data.model,
                 createdAt: data.createdAt,
+                profileJson: data.profileJson,
                 parsedJson: data.profileJson,
             });
             setAnalysisCount((count) => count + 1);
@@ -212,8 +180,7 @@ export default function AnalisisPage() {
                             </div>
                             <p className="mt-4 text-sm leading-6 text-slate-400">{createExcerpt(latestAnalysis.markdown, 260)}</p>
                         </SurfaceCard>
-                        <ConsistencyAudit analysis={latestAnalysis} />
-                        <AnalysisResult markdown={latestAnalysis.markdown} isLoading={false} />
+                        <AnalysisResultPanel analysis={latestAnalysis} />
                     </div>
                 ) : (
                     <SurfaceCard title="Belum Ada Analisis">

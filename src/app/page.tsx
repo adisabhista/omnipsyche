@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { ModuleCard, MetricCard, RightRail, StatusList, SurfaceCard } from "@/components/PlatformCards";
 import { getDashboardData } from "@/lib/dashboard-data";
-import ReactMarkdown from "react-markdown";
+import { createExcerpt } from "@/lib/analysis-format";
 
 const isComplete = (val: unknown) => {
     if (val === null || val === undefined || val === "") return false;
@@ -9,10 +9,16 @@ const isComplete = (val: unknown) => {
     return true;
 };
 
-const consistencyStatusLabels = {
-    low_data: "Data belum lengkap",
-    needs_review: "Perlu ditinjau",
-    good: "Baik",
+const riskLabels: Record<string, string> = {
+    low: "Rendah",
+    medium: "Sedang",
+    high: "Tinggi",
+};
+
+const confidenceLabels: Record<string, string> = {
+    low: "Rendah",
+    medium: "Sedang",
+    high: "Tinggi",
 };
 
 export default async function Home() {
@@ -30,6 +36,11 @@ export default async function Home() {
             title: "Analisis", 
             description: "Sintesis AI untuk membaca pola utama, kekuatan, blind spot, dan arah pertumbuhan.", 
             status: data.isAuthenticated ? (data.analysisCount > 0 ? "Tersimpan" : "Siap") : "Siap" 
+        },
+        {
+            title: "Validasi Profil",
+            description: "Validasi indikatif untuk melihat keselarasan profil dengan data pendukung.",
+            status: data.isAuthenticated ? (data.latestProfileValidation ? "Tersimpan" : "Siap") : "Siap",
         },
         { title: "Karier", description: "Pemetaan profil menjadi lingkungan kerja, peran, dan rekomendasi pengembangan.", status: "Baru" },
         { title: "Buku", description: "Rekomendasi bacaan berdasarkan kebutuhan belajar dan tema pertumbuhan profil.", status: "Baru" },
@@ -111,7 +122,7 @@ export default async function Home() {
                                     />
                                     <MetricCard 
                                         label="Modul Tersedia" 
-                                        value="6" 
+                                        value="7"
                                         detail="Modul platform siap digunakan." 
                                     />
                                 </>
@@ -124,7 +135,7 @@ export default async function Home() {
                                     />
                                     <MetricCard 
                                         label="Modul Tersedia" 
-                                        value="6" 
+                                        value="7"
                                         detail="Sistem analisis kepribadian modular." 
                                     />
                                 </>
@@ -140,34 +151,9 @@ export default async function Home() {
                                 title="Insight Terbaru" 
                                 eyebrow={`Terakhir diperbarui: ${new Date(data.latestAnalysis.createdAt).toLocaleDateString("id-ID", { day: "numeric", month: "long", year: "numeric" })}`}
                             >
-                                <div className="prose prose-invert prose-cyan max-w-none text-slate-300 text-sm leading-7">
-                                    <ReactMarkdown
-                                        components={{
-                                            h1: (props) => (
-                                                <h3 className="text-xl font-bold text-cyan-300 mt-4 mb-2" {...props} />
-                                            ),
-                                            h2: (props) => (
-                                                <h4 className="text-lg font-semibold text-cyan-300 mt-4 mb-2" {...props} />
-                                            ),
-                                            strong: (props) => (
-                                                <strong className="text-purple-300 font-bold" {...props} />
-                                            ),
-                                            li: (props) => (
-                                                <li className="text-slate-300 my-1 list-disc list-inside" {...props} />
-                                            ),
-                                            p: (props) => (
-                                                <p className="text-slate-300 leading-relaxed mb-3" {...props} />
-                                            ),
-                                            hr: (props) => (
-                                                <hr className="hidden border-none" {...props} />
-                                            ),
-                                        }}
-                                    >
-                                        {data.latestAnalysis.markdown.length > 350
-                                            ? data.latestAnalysis.markdown.substring(0, 350) + "..."
-                                            : data.latestAnalysis.markdown}
-                                    </ReactMarkdown>
-                                </div>
+                                <p className="max-w-3xl text-sm leading-7 text-slate-600 dark:text-slate-400">
+                                    {createExcerpt(data.latestAnalysis.markdown, 350)}
+                                </p>
                                 <div className="mt-5 flex items-center justify-between gap-4 border-t border-white/5 pt-4">
                                     <span className="text-xs text-slate-500 font-mono">Model: {data.latestAnalysis.model}</span>
                                     <Link href="/analisis" className="text-sm font-semibold text-cyan-300 hover:text-cyan-200 flex items-center gap-1">
@@ -222,17 +208,30 @@ export default async function Home() {
                             </p>
                         </SurfaceCard>
                         <SurfaceCard title="Konsistensi Profil">
-                            <StatusList
-                                items={[
-                                    { label: "Status", value: consistencyStatusLabels[data.consistencySummary.status] },
-                                    { label: "Skor", value: `${data.consistencySummary.score}/100` },
-                                    { label: "Catatan", value: `${data.consistencySummary.warningCount}` },
-                                ]}
-                            />
-                            <p className="mt-4 text-sm leading-6 text-slate-500">{data.consistencySummary.topWarning}</p>
-                            <Link href={data.consistencySummary.actionHref} className="mt-4 inline-flex rounded-lg border border-white/10 px-3 py-2 text-sm font-semibold text-slate-200 hover:bg-white/5">
-                                Lihat Detail
-                            </Link>
+                            {data.latestProfileValidation ? (
+                                <>
+                                    <StatusList
+                                        items={[
+                                            { label: "Skor", value: `${data.latestProfileValidation.score ?? 0}/100` },
+                                            { label: "Risiko", value: riskLabels[data.latestProfileValidation.risk ?? ""] ?? "Belum Ada" },
+                                            { label: "Keyakinan", value: confidenceLabels[data.latestProfileValidation.confidence ?? ""] ?? "Belum Ada" },
+                                        ]}
+                                    />
+                                    <p className="mt-4 text-sm leading-6 text-slate-500">
+                                        Validasi terakhir dibuat pada {new Date(data.latestProfileValidation.createdAt).toLocaleDateString("id-ID", { day: "numeric", month: "long", year: "numeric" })}.
+                                    </p>
+                                    <Link href="/validasi-profil" className="mt-4 inline-flex rounded-lg border border-white/10 px-3 py-2 text-sm font-semibold text-slate-200 hover:bg-white/5">
+                                        Lihat Validasi
+                                    </Link>
+                                </>
+                            ) : (
+                                <>
+                                    <p className="text-sm leading-6 text-slate-500">Belum ada validasi profil.</p>
+                                    <Link href="/validasi-profil" className="mt-4 inline-flex rounded-lg border border-white/10 px-3 py-2 text-sm font-semibold text-slate-200 hover:bg-white/5">
+                                        Validasi Profil
+                                    </Link>
+                                </>
+                            )}
                         </SurfaceCard>
                         <SurfaceCard title="Langkah Berikutnya">
                             <StatusList items={nextSteps} />

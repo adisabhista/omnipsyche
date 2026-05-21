@@ -1,5 +1,6 @@
 export function stripMarkdown(markdown: string) {
     return markdown
+        .replace(/^#\s*(?:[^\nA-Za-z0-9]*)?\s*Analisis OmniPsyche:[^\n]*\n+/i, " ")
         .replace(/```[\s\S]*?```/g, " ")
         .replace(/[#*_`>~-]/g, " ")
         .replace(/\s+/g, " ")
@@ -25,4 +26,3 @@ export function formatDateTime(date: Date | string) {
         minute: "2-digit",
     });
 }
-

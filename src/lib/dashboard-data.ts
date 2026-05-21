@@ -33,6 +33,13 @@ export interface DashboardData {
         parsedJson: unknown;
     } | null;
     consistencySummary: DashboardConsistencySummary;
+    latestProfileValidation: {
+        id: string;
+        score: number | null;
+        risk: string | null;
+        confidence: string | null;
+        createdAt: Date;
+    } | null;
 }
 
 const isComplete = (val: unknown) => {
@@ -97,6 +104,7 @@ export async function getDashboardData(): Promise<DashboardData> {
         latestProfile: null,
         latestAnalysis: null,
         consistencySummary: getDashboardConsistencySummary(null, defaultSettings, null, []),
+        latestProfileValidation: null,
     };
 
     if (!userId) {
@@ -110,7 +118,7 @@ export async function getDashboardData(): Promise<DashboardData> {
             orderBy: { createdAt: "desc" },
         });
 
-        const [latestAnalysis, settings, books, analysisCount, narrativePredictionCount] = await Promise.all([
+        const [latestAnalysis, settings, books, analysisCount, narrativePredictionCount, latestProfileValidation] = await Promise.all([
             prisma.analysisResult.findFirst({
                 where: { userId },
                 orderBy: { createdAt: "desc" },
@@ -122,6 +130,17 @@ export async function getDashboardData(): Promise<DashboardData> {
             }),
             prisma.analysisResult.count({ where: { userId } }),
             prisma.narrativePrediction.count({ where: { userId } }),
+            prisma.profileValidation.findFirst({
+                where: { userId },
+                orderBy: { createdAt: "desc" },
+                select: {
+                    id: true,
+                    score: true,
+                    risk: true,
+                    confidence: true,
+                    createdAt: true,
+                },
+            }),
         ]);
 
         // Completeness calculation
@@ -179,6 +198,7 @@ export async function getDashboardData(): Promise<DashboardData> {
                 latestAnalysis ? { parsedJson: latestAnalysis.parsedJson } : null,
                 books
             ),
+            latestProfileValidation,
         };
     } catch (error) {
         console.error("Error fetching dashboard data:", error);
