@@ -27,10 +27,10 @@ export default async function Home() {
     // Prepare modules with dynamic statuses if authenticated
     const dynamicModules = [
         { title: "Tipologi", description: "Eksplorasi MBTI, Enneagram, Big Five, RIASEC, dan kerangka lain sebagai lensa, bukan batasan.", status: "Eksplorasi" },
-        { 
-            title: "Bangun Profil", 
-            description: "Alur modular untuk menyusun identitas, narasi, tipologi, sifat, dan minat karier.", 
-            status: data.isAuthenticated ? `${data.profileCompleteness}%` : "68%" 
+        {
+            title: "Bangun Profil",
+            description: "Alur modular untuk menyusun identitas, narasi, tipologi, sifat, dan minat karier.",
+            status: data.isAuthenticated ? `${data.profileCompleteness}%` : "—"
         },
         { 
             title: "Analisis", 

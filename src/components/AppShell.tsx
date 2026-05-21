@@ -22,12 +22,27 @@ import {
     Sparkles,
     UserRoundCog,
 } from "lucide-react";
+import type { LucideIcon } from "lucide-react";
 import AuthStatus from "@/components/AuthStatus";
 
-const navItems = [
+type NavItem = {
+    href: string;
+    label: string;
+    icon: LucideIcon;
+    children?: { href: string; label: string }[];
+};
+
+const navItems: NavItem[] = [
     { href: "/", label: "Beranda", icon: Home },
-    { href: "/tipologi", label: "Tipologi", icon: Layers3 },
-    { href: "/tipologi/mbti/tes", label: "Tes MBTI", icon: ClipboardCheck },
+    {
+        label: "Tipologi",
+        href: "/tipologi",
+        icon: Layers3,
+        children: [
+            { href: "/tipologi", label: "Ringkasan" },
+            { href: "/tipologi/mbti/tes", label: "Tes MBTI" },
+        ],
+    },
     { href: "/bangun-profil", label: "Bangun Profil", icon: UserRoundCog },
     { href: "/analisis", label: "Analisis", icon: BarChart3 },
     { href: "/validasi-profil", label: "Validasi Profil", icon: ShieldCheck },
@@ -40,7 +55,10 @@ const navItems = [
 function getActiveNavHref(pathname: string, items: { href: string }[]) {
     const normalizedPath = pathname.replace(/\/$/, "") || "/";
 
-    const matches = items
+    // Filter out items with invalid href to prevent runtime errors
+    const validItems = items.filter((item) => typeof item.href === "string" && item.href.length > 0);
+
+    const matches = validItems
         .map((item) => ({
             href: item.href,
             normalizedHref: item.href.replace(/\/$/, "") || "/",
@@ -125,7 +143,13 @@ function resolvePageMeta(pathname: string) {
 export default function AppShell({ children }: { children: React.ReactNode }) {
     const pathname = usePathname();
     const meta = resolvePageMeta(pathname);
-    const activeHref = getActiveNavHref(pathname, navItems);
+    const activeHref = getActiveNavHref(
+        pathname,
+        navItems.flatMap((item) => [
+            { href: item.href },
+            ...(item.children?.filter((c) => c.href).map((c) => ({ href: c.href })) ?? []),
+        ])
+    );
     const { status } = useSession();
     const [completeness, setCompleteness] = useState<number | null>(null);
     const [hasProfile, setHasProfile] = useState<boolean>(false);
@@ -221,30 +245,62 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
                         {navItems.map((item) => {
                             const Icon = item.icon;
                             const active = item.href === activeHref;
+                            const hasChildren = !!item.children && item.children.length > 0;
                             return (
-                                <Link
-                                    key={item.href}
-                                    href={item.href}
-                                    title={sidebarCollapsed ? item.label : undefined}
-                                    aria-label={sidebarCollapsed ? item.label : undefined}
-                                    className={clsx(
-                                        "group flex items-center rounded-lg text-sm transition focus:outline-none focus:ring-2 focus:ring-cyan-300/45",
-                                        sidebarCollapsed ? "justify-center px-0 py-3" : "gap-3 px-3 py-3",
-                                        active
-                                            ? "bg-cyan-100 text-cyan-900 ring-1 ring-cyan-300/35 dark:bg-cyan-300/10 dark:text-cyan-100 dark:ring-cyan-300/20"
-                                            : "text-slate-500 hover:bg-slate-100 hover:text-slate-950 dark:text-slate-400 dark:hover:bg-white/5 dark:hover:text-slate-100"
-                                    )}
-                                >
-                                    <Icon className={clsx("h-4 w-4", active ? "text-cyan-600 dark:text-cyan-300" : "text-slate-500 group-hover:text-slate-700 dark:group-hover:text-slate-300")} />
-                                    <span
+                                <div key={item.href}>
+                                    <Link
+                                        href={item.href}
+                                        title={sidebarCollapsed ? item.label : undefined}
+                                        aria-label={sidebarCollapsed ? item.label : undefined}
                                         className={clsx(
-                                            "min-w-0 overflow-hidden whitespace-nowrap transition-all duration-200",
-                                            sidebarCollapsed ? "w-0 opacity-0" : "w-auto opacity-100"
+                                            "group flex items-center rounded-lg text-sm transition focus:outline-none focus:ring-2 focus:ring-cyan-300/45",
+                                            sidebarCollapsed ? "justify-center px-0 py-3" : "gap-3 px-3 py-3",
+                                            active
+                                                ? "bg-cyan-100 text-cyan-900 ring-1 ring-cyan-300/35 dark:bg-cyan-300/10 dark:text-cyan-100 dark:ring-cyan-300/20"
+                                                : "text-slate-500 hover:bg-slate-100 hover:text-slate-950 dark:text-slate-400 dark:hover:bg-white/5 dark:hover:text-slate-100"
                                         )}
                                     >
-                                        {item.label}
-                                    </span>
-                                </Link>
+                                        <Icon className={clsx("h-4 w-4", active ? "text-cyan-600 dark:text-cyan-300" : "text-slate-500 group-hover:text-slate-700 dark:group-hover:text-slate-300")} />
+                                        {!sidebarCollapsed && (
+                                            <span className="min-w-0 flex-1 overflow-hidden whitespace-nowrap">
+                                                {item.label}
+                                            </span>
+                                        )}
+                                        {hasChildren && !sidebarCollapsed && (
+                                            <span className="text-xs text-slate-500">▸</span>
+                                        )}
+                                    </Link>
+                                    {!sidebarCollapsed && hasChildren && (
+                                        <div className="ml-6 space-y-1 border-l border-white/10 pl-3">
+                                            {item.children!.filter((c) => typeof c.href === "string" && c.href.length > 0).map((child) => {
+                                                const childActive = child.href === activeHref;
+                                                return (
+                                                    <Link
+                                                        key={child.href}
+                                                        href={child.href}
+                                                        className={clsx(
+                                                            "group flex items-center rounded-lg py-2 pl-3 text-sm transition focus:outline-none focus:ring-2 focus:ring-cyan-300/45",
+                                                            childActive
+                                                                ? "bg-cyan-100 text-cyan-900 dark:bg-cyan-300/10 dark:text-cyan-100"
+                                                                : "text-slate-500 hover:text-slate-950 dark:text-slate-400 dark:hover:text-slate-100 dark:hover:bg-white/5"
+                                                        )}
+                                                    >
+                                                        <span
+                                                            className={clsx(
+                                                                "text-xs",
+                                                                childActive
+                                                                    ? "text-cyan-600 dark:text-cyan-300"
+                                                                    : "text-slate-500 group-hover:text-slate-700 dark:group-hover:text-slate-300"
+                                                            )}
+                                                        >
+                                                            {child.label}
+                                                        </span>
+                                                    </Link>
+                                                );
+                                            })}
+                                        </div>
+                                    )}
+                                </div>
                             );
                         })}
                     </nav>

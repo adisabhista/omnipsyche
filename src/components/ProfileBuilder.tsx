@@ -5,6 +5,7 @@ import { useSession } from "next-auth/react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import clsx from "clsx";
+import { toast } from "sonner";
 import {
     Activity,
     Brain,
@@ -133,11 +134,13 @@ export default function ProfileBuilder() {
                 throw new Error(data.error || "Profil gagal disimpan.");
             }
 
+            toast.success("Profil berhasil diperbarui!");
             setMessage({ type: "success", text: "Profil berhasil disimpan." });
             fetchProfile();
             router.refresh();
         } catch (err: unknown) {
             console.error("Save profile failed:", err);
+            toast.error("Gagal memperbarui profil. Silakan coba lagi.");
             if (err instanceof Error) {
                 setMessage({ type: "error", text: err.message });
             } else {

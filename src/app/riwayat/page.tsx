@@ -27,7 +27,7 @@ export default async function RiwayatPage() {
     return (
         <div className="grid gap-6 xl:grid-cols-[1fr_320px]">
             <div className="space-y-6">
-                <SurfaceCard title="Riwayat Analisis" eyebrow="Memori Platform">
+                <SurfaceCard title="Riwayat Analisis" eyebrow="Riwayat Analisis Kamu">
                     {analyses.length === 0 ? (
                         <div className="py-10 text-center">
                             <p className="text-sm text-slate-400">Belum ada riwayat analisis.</p>
@@ -45,7 +45,7 @@ export default async function RiwayatPage() {
                                                 <BarChart3 className="h-5 w-5" />
                                             </div>
                                             <div className="min-w-0">
-                                                <h2 className="font-medium text-slate-100">Analisis Profil Gabungan</h2>
+                                                <h2 className="font-medium text-slate-100">Analisis — {new Date(analysis.createdAt).toLocaleDateString("id-ID", { day: "numeric", month: "long", year: "numeric" })}</h2>
                                                 <p className="mt-1 text-sm text-slate-500">
                                                     {analysis.profile.name} · {analysis.profile.mbti || "MBTI belum diisi"} · Enneagram {analysis.profile.enneagramType || "belum diisi"}
                                                 </p>
@@ -54,7 +54,6 @@ export default async function RiwayatPage() {
                                         </div>
                                         <div className="shrink-0 text-left md:text-right">
                                             <p className="text-sm text-slate-400">{formatDateTime(analysis.createdAt)}</p>
-                                            <p className="mt-1 text-xs text-slate-500">Model: {analysis.model}</p>
                                             <Link href={`/riwayat/${analysis.id}`} className="mt-3 inline-flex rounded-lg border border-white/10 px-3 py-2 text-sm font-semibold text-slate-200 hover:bg-white/5">
                                                 Lihat Detail
                                             </Link>

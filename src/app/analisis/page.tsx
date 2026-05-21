@@ -141,8 +141,14 @@ export default function AnalisisPage() {
         <div className="grid gap-6 xl:grid-cols-[1fr_320px]">
             <div className="space-y-6">
                 {error && (
-                    <div className="rounded-lg border border-red-400/25 bg-red-400/10 p-4 text-sm text-red-200">
-                        {error}
+                    <div className="rounded-lg border border-red-400/25 bg-red-400/10 p-4">
+                        <p className="text-sm text-red-200 mb-3">{error}</p>
+                        <button
+                            onClick={fetchData}
+                            className="inline-flex items-center gap-2 rounded-lg border border-red-400/30 bg-red-400/10 px-3 py-1.5 text-sm font-semibold text-red-200 hover:bg-red-400/20"
+                        >
+                            Coba Lagi
+                        </button>
                     </div>
                 )}
 

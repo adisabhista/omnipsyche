@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useSession } from "next-auth/react";
 import { AlertTriangle, CheckCircle2, HelpCircle, Loader2, ShieldCheck, Sparkles } from "lucide-react";
+import { toast } from "sonner";
 import { MetricCard, RightRail, StatusList, SurfaceCard } from "@/components/PlatformCards";
 import type { ProfileValidationResult } from "@/lib/profile-validation-schema";
 
@@ -126,9 +127,11 @@ export default function ValidasiProfilPage() {
 
             setValidation(data.validation);
             setHasProfile(true);
+            toast.success("Profil berhasil divalidasi!");
         } catch (generateError) {
             const message = generateError instanceof Error ? generateError.message : "Gagal membuat validasi profil yang valid.";
             setError(message);
+            toast.error("Gagal melakukan validasi.");
             if (message.includes("Bangun profil")) setHasProfile(false);
         } finally {
             setGenerating(false);
@@ -181,14 +184,16 @@ export default function ValidasiProfilPage() {
                                 Analisis ini membantu melihat apakah profil tipologi Anda selaras dengan data pendukung seperti minat, koleksi buku, pendidikan, dan hasil analisis. Hasil ini bersifat indikatif, bukan kepastian mutlak.
                             </p>
                         </div>
-                        <button
-                            onClick={handleGenerate}
-                            disabled={generating || !hasProfile}
-                            className="inline-flex items-center justify-center gap-2 rounded-lg bg-cyan-300 px-4 py-2.5 text-sm font-semibold text-slate-950 transition hover:bg-cyan-200 disabled:cursor-not-allowed disabled:opacity-60"
-                        >
-                            {generating ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />}
-                            {generating ? "Menganalisis konsistensi profil..." : "Buat Validasi Profil"}
-                        </button>
+                        <div title={!hasProfile ? "Lengkapi profil terlebih dahulu di halaman Bangun Profil" : undefined}>
+                            <button
+                                onClick={handleGenerate}
+                                disabled={generating || !hasProfile}
+                                className="inline-flex items-center justify-center gap-2 rounded-lg bg-cyan-300 px-4 py-2.5 text-sm font-semibold text-slate-950 transition hover:bg-cyan-200 disabled:cursor-not-allowed disabled:opacity-60"
+                            >
+                                {generating ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />}
+                                {generating ? "Menganalisis konsistensi profil..." : "Buat Validasi Profil"}
+                            </button>
+                        </div>
                     </div>
                 </SurfaceCard>
 

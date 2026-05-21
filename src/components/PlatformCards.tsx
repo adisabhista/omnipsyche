@@ -54,15 +54,46 @@ export function RightRail({ children }: { children: React.ReactNode }) {
     return <aside className="space-y-4 xl:sticky xl:top-28 xl:self-start">{children}</aside>;
 }
 
-export function StatusList({ items }: { items: Array<{ label: string; value: string }> }) {
+type StatusVariant = "warning" | "success" | "muted";
+
+export function StatusList({ items }: { items: Array<{ label: string; value: string; variant?: StatusVariant }> }) {
     return (
         <div className="space-y-3">
             {items.map((item) => (
                 <div key={item.label} className="flex items-center justify-between gap-4 border-b border-white/5 pb-3 last:border-b-0 last:pb-0">
                     <span className="text-sm text-slate-500">{item.label}</span>
-                    <span className="text-sm font-medium text-slate-700 dark:text-slate-200">{item.value}</span>
+                    <StatusBadge value={item.value} variant={item.variant} />
                 </div>
             ))}
         </div>
+    );
+}
+
+function StatusBadge({ value, variant }: { value: string; variant?: StatusVariant }) {
+    if (variant === "warning" || value === "Perlu Diisi") {
+        return (
+            <span className="rounded-full border border-amber-300/30 bg-amber-300/10 px-2.5 py-1 text-xs font-medium text-amber-200">
+                {value}
+            </span>
+        );
+    }
+    if (variant === "success" || value === "Selesai" || value === "Siap Dibuat") {
+        return (
+            <span className="rounded-full border border-emerald-300/30 bg-emerald-300/10 px-2.5 py-1 text-xs font-medium text-emerald-200">
+                {value}
+            </span>
+        );
+    }
+    if (variant === "muted") {
+        return (
+            <span className="rounded-full border border-white/15 bg-white/5 px-2.5 py-1 text-xs font-medium text-slate-400">
+                {value}
+            </span>
+        );
+    }
+    return (
+        <span className="rounded-full border border-orange-300/30 bg-orange-300/10 px-2.5 py-1 text-xs font-medium text-orange-200">
+            {value}
+        </span>
     );
 }

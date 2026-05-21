@@ -122,6 +122,23 @@ export default async function KarierPage() {
                 </SurfaceCard>
 
                 <SurfaceCard title="Jalur Karier">
+                    <div className="mb-5 rounded-lg border border-white/10 bg-black/15 p-4">
+                        <h3 className="mb-2 text-sm font-medium text-slate-400">Keterangan Skor Kecocokan</h3>
+                        <div className="flex flex-wrap gap-4 text-sm">
+                            <span className="flex items-center gap-2 text-slate-400">
+                                <span className="rounded-full border border-cyan-300/25 px-2 py-0.5 text-[11px] uppercase text-cyan-300">Tinggi</span>
+                                ≥80% — Sangat cocok
+                            </span>
+                            <span className="flex items-center gap-2 text-slate-400">
+                                <span className="rounded-full border border-white/20 px-2 py-0.5 text-[11px] uppercase text-slate-400">Sedang</span>
+                                50–79%
+                            </span>
+                            <span className="flex items-center gap-2 text-slate-400">
+                                <span className="rounded-full border border-amber-300/25 px-2 py-0.5 text-[11px] uppercase text-amber-300">Rendah</span>
+                                &lt;50%
+                            </span>
+                        </div>
+                    </div>
                     <div className="grid gap-4 md:grid-cols-2">
                         {career.career_paths.map((path) => (
                             <article key={path.title} className="rounded-lg border border-white/10 bg-black/25 p-4">

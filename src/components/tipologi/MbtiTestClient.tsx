@@ -6,6 +6,7 @@ import {
     CheckCircle2,
     Clock,
     ExternalLink,
+    Info,
     Loader2,
     RefreshCw,
     Sparkles,
@@ -289,7 +290,7 @@ export default function MbtiTestClient({ initialTests, currentMbti }: MbtiTestCl
                                     </div>
                                     <div>
                                         <p className="text-xs font-medium uppercase tracking-[0.16em] text-cyan-700 dark:text-cyan-300">
-                                            Prediksi MBTI
+                                            Hasil Tes MBTI
                                         </p>
                                         <p className="mt-1 text-2xl font-semibold text-slate-950 dark:text-slate-50">
                                             {completedResult.prediction}
@@ -302,9 +303,14 @@ export default function MbtiTestClient({ initialTests, currentMbti }: MbtiTestCl
                             <div className="mt-5 grid gap-4 sm:grid-cols-2">
                                 {completedResult.traitOrderConscious && completedResult.traitOrderConscious.length > 0 && (
                                     <div className="rounded-lg border border-slate-200 bg-slate-50 p-4 dark:border-white/10 dark:bg-black/25">
-                                        <p className="mb-3 text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">
-                                            Conscious Stack
-                                        </p>
+                                        <div className="mb-3 flex items-center gap-1.5">
+                                            <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">
+                                                Fungsi Utama
+                                            </p>
+                                            <span title="Fungsi dominan yang kamu gunakan secara sadar dalam kehidupan sehari-hari" className="cursor-help text-slate-400">
+                                                <Info className="h-3 w-3" />
+                                            </span>
+                                        </div>
                                         <div className="space-y-2">
                                             {completedResult.traitOrderConscious.map((fn, i) => (
                                                 <div key={fn} className="flex items-center justify-between gap-3">
@@ -317,9 +323,14 @@ export default function MbtiTestClient({ initialTests, currentMbti }: MbtiTestCl
                                 )}
                                 {completedResult.traitOrderShadow && completedResult.traitOrderShadow.length > 0 && (
                                     <div className="rounded-lg border border-slate-200 bg-slate-50 p-4 dark:border-white/10 dark:bg-black/25">
-                                        <p className="mb-3 text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">
-                                            Shadow Stack
-                                        </p>
+                                        <div className="mb-3 flex items-center gap-1.5">
+                                            <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">
+                                                Fungsi Bayangan
+                                            </p>
+                                            <span title="Fungsi yang muncul saat kamu keluar dari zona nyaman atau sedang stres" className="cursor-help text-slate-400">
+                                                <Info className="h-3 w-3" />
+                                            </span>
+                                        </div>
                                         <div className="space-y-2">
                                             {completedResult.traitOrderShadow.map((fn, i) => (
                                                 <div key={fn} className="flex items-center justify-between gap-3">
@@ -376,17 +387,17 @@ export default function MbtiTestClient({ initialTests, currentMbti }: MbtiTestCl
                                     {applyingMbti ? (
                                         <>
                                             <Loader2 className="h-4 w-4 animate-spin" />
-                                            Menerapkan...
+                                            Menyimpan...
                                         </>
                                     ) : appliedMbti ? (
                                         <>
                                             <CheckCircle2 className="h-4 w-4" />
-                                            MBTI diterapkan
+                                            Tersimpan
                                         </>
                                     ) : (
                                         <>
                                             <ArrowRight className="h-4 w-4" />
-                                            Terapkan MBTI ke Profil
+                                            Simpan ke Profil Saya
                                         </>
                                     )}
                                 </button>
@@ -468,7 +479,15 @@ export default function MbtiTestClient({ initialTests, currentMbti }: MbtiTestCl
                             <span className="text-sm font-medium text-slate-700 dark:text-slate-200">
                                 {tests.length > 0
                                     ? tests[0].status === "completed"
-                                        ? "Selesai"
+                                        ? `Selesai ${(() => {
+                                            const date = new Date(tests[0].completedAt ?? Date.now());
+                                            const d = String(date.getDate()).padStart(2, "0");
+                                            const mo = date.toLocaleString("id-ID", { month: "short" });
+                                            const y = date.getFullYear();
+                                            const h = String(date.getHours()).padStart(2, "0");
+                                            const m = String(date.getMinutes()).padStart(2, "0");
+                                            return `${d} ${mo} ${y}, ${h}:${m}`;
+                                          })()}`
                                         : "Menunggu"
                                     : "Belum ada"}
                             </span>

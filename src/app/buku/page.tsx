@@ -11,7 +11,7 @@ import { formatDateTime } from "@/lib/analysis-format";
 import type { BookRecommendation } from "@/lib/book-recommendations";
 import type { ProfileQualityWarning } from "@/lib/profile-consistency";
 
-type TabId = "recommendations" | "collection" | "gaps" | "path";
+type TabId = "recommendations" | "collection" | "overview";
 
 type UserBook = {
     id: string;
@@ -75,8 +75,7 @@ interface BookModuleState {
 const tabs: Array<{ id: TabId; label: string }> = [
     { id: "recommendations", label: "Rekomendasi" },
     { id: "collection", label: "Koleksi Saya" },
-    { id: "gaps", label: "Kategori Penyeimbang" },
-    { id: "path", label: "Jalur Baca" },
+    { id: "overview", label: "Gambaran & Jalur" },
 ];
 
 const fitScoreLabels: Record<string, string> = {
@@ -342,7 +341,7 @@ function BalancingSuggestions({ recommendation }: { recommendation: BookRecommen
     if (suggestions.length === 0 && gaps.length === 0) return null;
 
     return (
-        <SurfaceCard title="Kategori Penyeimbang" eyebrow="Opsional untuk Memperluas Perspektif">
+        <SurfaceCard title="Kategori Pelengkap" eyebrow="Opsional untuk Memperluas Perspektif">
             <p className="text-sm leading-6 text-slate-400">{recommendation.collection_analysis.blind_spot_note}</p>
             {suggestions.length > 0 && (
                 <div className="mt-5 grid gap-4">
@@ -991,7 +990,7 @@ export default function BukuPage() {
                     </div>
                 )}
 
-                {activeTab === "gaps" && (
+                {activeTab === "overview" && (
                     recommendation ? (
                         <div className="space-y-6">
                             <SurfaceCard title="Pola Koleksi Anda">
@@ -1013,7 +1012,7 @@ export default function BukuPage() {
                                     </div>
                                 </div>
                             </SurfaceCard>
-                            <SurfaceCard title="Kategori Penyeimbang" eyebrow="Opsional untuk Memperluas Perspektif">
+                            <SurfaceCard title="Kategori Pelengkap" eyebrow="Opsional untuk Memperluas Perspektif">
                                 <p className="mb-5 text-sm leading-6 text-slate-400">{recommendation.collection_analysis.blind_spot_note}</p>
                                 <div className="grid gap-4">
                                     {recommendation.collection_analysis.gaps.map((gap) => (
@@ -1024,41 +1023,31 @@ export default function BukuPage() {
                                     ))}
                                 </div>
                             </SurfaceCard>
+                            <SurfaceCard title="Jalur Baca yang Disarankan">
+                                <div className="space-y-4">
+                                    {recommendation.reading_path.map((step) => (
+                                        <article key={`${step.step}-${step.category}-${step.title}`} className="rounded-lg border border-white/10 bg-black/25 p-4">
+                                            <div className="flex flex-wrap items-center gap-3">
+                                                <span className="flex h-8 w-8 items-center justify-center rounded-full bg-cyan-300 text-sm font-semibold text-slate-950">
+                                                    {step.step}
+                                                </span>
+                                                <div>
+                                                    <h3 className="font-semibold text-slate-100">{step.title}</h3>
+                                                    <p className="text-sm text-slate-400">
+                                                        {step.category} - {pathSourceLabels[step.source]} - {step.focus}
+                                                    </p>
+                                                </div>
+                                            </div>
+                                            <p className="mt-3 text-sm leading-6 text-slate-500">{step.reason}</p>
+                                        </article>
+                                    ))}
+                                </div>
+                            </SurfaceCard>
                         </div>
                     ) : (
                         <EmptyPanel
-                            title="Kategori Penyeimbang"
-                            message="Buat rekomendasi buku terlebih dahulu untuk melihat kategori penyeimbang."
-                        />
-                    )
-                )}
-
-                {activeTab === "path" && (
-                    recommendation ? (
-                        <SurfaceCard title="Jalur Baca yang Disarankan">
-                            <div className="space-y-4">
-                                {recommendation.reading_path.map((step) => (
-                                    <article key={`${step.step}-${step.category}-${step.title}`} className="rounded-lg border border-white/10 bg-black/25 p-4">
-                                        <div className="flex flex-wrap items-center gap-3">
-                                            <span className="flex h-8 w-8 items-center justify-center rounded-full bg-cyan-300 text-sm font-semibold text-slate-950">
-                                                {step.step}
-                                            </span>
-                                            <div>
-                                                <h3 className="font-semibold text-slate-100">{step.title}</h3>
-                                                <p className="text-sm text-slate-400">
-                                                    {step.category} - {pathSourceLabels[step.source]} - {step.focus}
-                                                </p>
-                                            </div>
-                                        </div>
-                                        <p className="mt-3 text-sm leading-6 text-slate-500">{step.reason}</p>
-                                    </article>
-                                ))}
-                            </div>
-                        </SurfaceCard>
-                    ) : (
-                        <EmptyPanel
-                            title="Jalur Baca"
-                            message="Buat rekomendasi buku terlebih dahulu untuk melihat jalur baca."
+                            title="Gambaran &amp; Jalur"
+                            message="Buat rekomendasi buku terlebih dahulu untuk melihat gambaran koleksi dan jalur baca."
                         />
                     )
                 )}
