@@ -75,7 +75,7 @@ interface BookModuleState {
 const tabs: Array<{ id: TabId; label: string }> = [
     { id: "recommendations", label: "Rekomendasi" },
     { id: "collection", label: "Koleksi Saya" },
-    { id: "gaps", label: "Gap Bacaan" },
+    { id: "gaps", label: "Kategori Penyeimbang" },
     { id: "path", label: "Jalur Baca" },
 ];
 
@@ -94,6 +94,19 @@ const difficultyLabels: Record<string, string> = {
     beginner: "Pemula",
     intermediate: "Menengah",
     advanced: "Lanjutan",
+};
+
+const recommendationModeLabels: Record<BookRecommendation["recommended_categories"][number]["recommendation_mode"], string> = {
+    similar_to_collection: "Mirip dengan Koleksi Anda",
+    from_unfinished_collection: "Baca dari Koleksi Anda",
+    profile_fit: "Selaras dengan Profil",
+    balancing_blind_spot: "Opsional untuk Memperluas Perspektif",
+};
+
+const pathSourceLabels: Record<BookRecommendation["reading_path"][number]["source"], string> = {
+    collection: "Koleksi",
+    new: "Baru",
+    balancing: "Penyeimbang",
 };
 
 const statusLabels: Record<UserBook["status"], string> = {
@@ -234,6 +247,9 @@ function CategoryCard({
                 <span className="rounded-full border border-cyan-300/20 px-3 py-1 text-xs text-cyan-300">
                     {fitScoreLabels[category.fit_score] ?? category.fit_score}
                 </span>
+                <span className="ml-2 inline-flex rounded-full border border-white/10 px-3 py-1 text-xs text-slate-300">
+                    {recommendationModeLabels[category.recommendation_mode]}
+                </span>
                 <p className="mt-4 text-sm leading-6 text-slate-400">{category.priority_reason}</p>
                 <p className="mt-3 text-sm leading-6 text-slate-500">{category.collection_context}</p>
                 {category.related_profile_factors.length > 0 && (
@@ -253,7 +269,7 @@ function CategoryCard({
                             <h3 className="font-semibold text-slate-100">Baca dari Koleksi Anda</h3>
                             {!hasNewRecommendations && (
                                 <p className="mt-1 text-sm leading-6 text-slate-500">
-                                    Kategori ini sudah cukup terwakili oleh koleksi Anda. Mulai dari buku berikut.
+                                    Kategori ini sudah cukup terwakili oleh koleksi Anda, jadi mulai dari buku yang sudah tersimpan.
                                 </p>
                             )}
                         </div>
@@ -268,10 +284,10 @@ function CategoryCard({
                 {hasNewRecommendations && (
                     <section>
                         <div className="mb-3">
-                            <h3 className="font-semibold text-slate-100">Rekomendasi Baru</h3>
+                            <h3 className="font-semibold text-slate-100">Rekomendasi Serupa</h3>
                             {!hasCollectionBooks && (
                                 <p className="mt-1 text-sm leading-6 text-slate-500">
-                                    Koleksi Anda belum banyak mencakup kategori ini, jadi sistem menyarankan buku baru.
+                                    Buku baru ini dipilih karena masih dekat dengan pola kategori dan minat koleksi Anda.
                                 </p>
                             )}
                         </div>
@@ -282,6 +298,112 @@ function CategoryCard({
                         </div>
                     </section>
                 )}
+            </div>
+        </SurfaceCard>
+    );
+}
+
+function CollectionPatternOverview({ recommendation }: { recommendation: BookRecommendation }) {
+    const analysis = recommendation.collection_analysis;
+
+    return (
+        <SurfaceCard title="Pola Koleksi Anda" eyebrow="Sinyal Utama Rekomendasi">
+            <p className="text-sm leading-6 text-slate-400">{analysis.dominant_pattern_summary}</p>
+            <div className="mt-5 grid gap-4 md:grid-cols-3">
+                <div className="rounded-lg border border-white/10 bg-black/25 p-4">
+                    <p className="text-xs uppercase tracking-[0.18em] text-slate-500">Kategori Dominan</p>
+                    <p className="mt-2 text-sm text-slate-300">
+                        {analysis.dominant_categories.length ? analysis.dominant_categories.join(", ") : "Belum cukup data koleksi."}
+                    </p>
+                </div>
+                <div className="rounded-lg border border-white/10 bg-black/25 p-4">
+                    <p className="text-xs uppercase tracking-[0.18em] text-slate-500">Koleksi</p>
+                    <p className="mt-2 text-sm text-slate-300">
+                        {analysis.owned_count} buku total, {analysis.unfinished_count} belum selesai, {analysis.finished_count} selesai
+                    </p>
+                </div>
+                <div className="rounded-lg border border-white/10 bg-black/25 p-4">
+                    <p className="text-xs uppercase tracking-[0.18em] text-slate-500">Prioritas</p>
+                    <p className="mt-2 text-sm leading-6 text-slate-300">{analysis.similarity_priority_note}</p>
+                </div>
+            </div>
+            <div className="mt-4 rounded-lg border border-cyan-300/15 bg-cyan-300/5 p-4">
+                <p className="text-xs uppercase tracking-[0.18em] text-cyan-300">Baca dari Koleksi Anda</p>
+                <p className="mt-2 text-sm leading-6 text-slate-400">{analysis.unread_priority_note}</p>
+            </div>
+        </SurfaceCard>
+    );
+}
+
+function BalancingSuggestions({ recommendation }: { recommendation: BookRecommendation }) {
+    const suggestions = recommendation.balancing_suggestions;
+    const gaps = recommendation.collection_analysis.gaps;
+
+    if (suggestions.length === 0 && gaps.length === 0) return null;
+
+    return (
+        <SurfaceCard title="Kategori Penyeimbang" eyebrow="Opsional untuk Memperluas Perspektif">
+            <p className="text-sm leading-6 text-slate-400">{recommendation.collection_analysis.blind_spot_note}</p>
+            {suggestions.length > 0 && (
+                <div className="mt-5 grid gap-4">
+                    {suggestions.map((suggestion) => (
+                        <article key={suggestion.category} className="rounded-lg border border-white/10 bg-black/25 p-4">
+                            <div className="flex flex-wrap items-center justify-between gap-3">
+                                <h3 className="font-semibold text-slate-100">{suggestion.category}</h3>
+                                <span className="rounded-full border border-cyan-300/20 px-3 py-1 text-xs text-cyan-200">
+                                    Opsional
+                                </span>
+                            </div>
+                            <p className="mt-2 text-sm leading-6 text-slate-500">{suggestion.reason}</p>
+                            {suggestion.books.length > 0 && (
+                                <div className="mt-4 grid gap-3 md:grid-cols-2">
+                                    {suggestion.books.map((book) => (
+                                        <div key={`${suggestion.category}-${book.title}`} className="rounded-lg border border-white/10 bg-black/20 p-3">
+                                            <p className="font-medium text-slate-200">{book.title}</p>
+                                            <p className="mt-1 text-sm text-slate-400">{book.author}</p>
+                                            <p className="mt-2 text-sm leading-6 text-slate-500">{book.why_optional}</p>
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
+                        </article>
+                    ))}
+                </div>
+            )}
+            {suggestions.length === 0 && (
+                <div className="mt-5 grid gap-4">
+                    {gaps.map((gap) => (
+                        <article key={gap.category} className="rounded-lg border border-white/10 bg-black/25 p-4">
+                            <h3 className="font-semibold text-slate-100">{gap.category}</h3>
+                            <p className="mt-2 text-sm leading-6 text-slate-500">{gap.reason}</p>
+                        </article>
+                    ))}
+                </div>
+            )}
+        </SurfaceCard>
+    );
+}
+
+function ReadingPathCard({ recommendation }: { recommendation: BookRecommendation }) {
+    return (
+        <SurfaceCard title="Jalur Baca" eyebrow="Urutan yang Disarankan">
+            <div className="space-y-4">
+                {recommendation.reading_path.map((step) => (
+                    <article key={`${step.step}-${step.category}-${step.title}`} className="rounded-lg border border-white/10 bg-black/25 p-4">
+                        <div className="flex flex-wrap items-center gap-3">
+                            <span className="flex h-8 w-8 items-center justify-center rounded-full bg-cyan-300 text-sm font-semibold text-slate-950">
+                                {step.step}
+                            </span>
+                            <div>
+                                <h3 className="font-semibold text-slate-100">{step.title}</h3>
+                                <p className="text-sm text-slate-400">
+                                    {step.category} - {pathSourceLabels[step.source]} - {step.focus}
+                                </p>
+                            </div>
+                        </div>
+                        <p className="mt-3 text-sm leading-6 text-slate-500">{step.reason}</p>
+                    </article>
+                ))}
             </div>
         </SurfaceCard>
     );
@@ -669,12 +791,15 @@ export default function BukuPage() {
                                         <p className="mt-2 text-sm leading-6 text-slate-400">{recommendation.category_ranking_logic}</p>
                                     </div>
                                 </SurfaceCard>
+                                <CollectionPatternOverview recommendation={recommendation} />
                                 <div className="space-y-4">
-                                    <h2 className="text-lg font-semibold text-slate-100">Urutan Kategori Paling Cocok</h2>
+                                    <h2 className="text-lg font-semibold text-slate-100">Rekomendasi Utama</h2>
                                     {recommendation.recommended_categories.map((category) => (
                                         <CategoryCard key={category.name} category={category} />
                                     ))}
                                 </div>
+                                <BalancingSuggestions recommendation={recommendation} />
+                                <ReadingPathCard recommendation={recommendation} />
                             </>
                         )}
                     </>
@@ -869,8 +994,8 @@ export default function BukuPage() {
                 {activeTab === "gaps" && (
                     recommendation ? (
                         <div className="space-y-6">
-                            <SurfaceCard title="Gap Bacaan">
-                                <p className="text-sm leading-6 text-slate-400">{recommendation.collection_analysis.unread_priority_note}</p>
+                            <SurfaceCard title="Pola Koleksi Anda">
+                                <p className="text-sm leading-6 text-slate-400">{recommendation.collection_analysis.dominant_pattern_summary}</p>
                                 <div className="mt-5 grid gap-4 md:grid-cols-2">
                                     <div className="rounded-lg border border-white/10 bg-black/25 p-4">
                                         <p className="text-xs uppercase tracking-[0.18em] text-slate-500">Kategori Dominan</p>
@@ -888,7 +1013,8 @@ export default function BukuPage() {
                                     </div>
                                 </div>
                             </SurfaceCard>
-                            <SurfaceCard title="Kategori yang Perlu Dieksplorasi">
+                            <SurfaceCard title="Kategori Penyeimbang" eyebrow="Opsional untuk Memperluas Perspektif">
+                                <p className="mb-5 text-sm leading-6 text-slate-400">{recommendation.collection_analysis.blind_spot_note}</p>
                                 <div className="grid gap-4">
                                     {recommendation.collection_analysis.gaps.map((gap) => (
                                         <article key={gap.category} className="rounded-lg border border-white/10 bg-black/25 p-4">
@@ -901,8 +1027,8 @@ export default function BukuPage() {
                         </div>
                     ) : (
                         <EmptyPanel
-                            title="Gap Bacaan"
-                            message="Buat rekomendasi buku terlebih dahulu untuk melihat gap bacaan."
+                            title="Kategori Penyeimbang"
+                            message="Buat rekomendasi buku terlebih dahulu untuk melihat kategori penyeimbang."
                         />
                     )
                 )}
@@ -920,7 +1046,7 @@ export default function BukuPage() {
                                             <div>
                                                 <h3 className="font-semibold text-slate-100">{step.title}</h3>
                                                 <p className="text-sm text-slate-400">
-                                                    {step.category} · {step.source === "collection" ? "Koleksi" : "Baru"} · {step.focus}
+                                                    {step.category} - {pathSourceLabels[step.source]} - {step.focus}
                                                 </p>
                                             </div>
                                         </div>
@@ -955,7 +1081,7 @@ export default function BukuPage() {
                 </SurfaceCard>
                 <SurfaceCard title="Prinsip Kurasi">
                     <p className="text-sm leading-6 text-slate-500">
-                        Rekomendasi meranking kategori berdasarkan profil, analisis, dan koleksi buku tersimpan. Buku yang belum selesai di koleksi diprioritaskan sebelum rekomendasi baru.
+                        Rekomendasi membaca pola koleksi terlebih dahulu. Buku yang belum selesai dan kategori yang mirip koleksi diprioritaskan sebelum kategori penyeimbang.
                     </p>
                 </SurfaceCard>
             </RightRail>

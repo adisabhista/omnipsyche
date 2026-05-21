@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { getLatestUserAnalysis, getLatestUserProfile } from "@/lib/analysis-data";
-import { bookRecommendationSchema } from "@/lib/book-recommendations";
+import { normalizeBookRecommendation } from "@/lib/book-recommendations";
 import { requireCurrentUserId } from "@/lib/current-user";
 import { prisma } from "@/lib/prisma";
 
@@ -53,7 +53,13 @@ export async function GET() {
             orderBy: { createdAt: "desc" },
         });
         const recommendation = latestInsight
-            ? bookRecommendationSchema.safeParse(latestInsight.content)
+            ? (() => {
+                try {
+                    return normalizeBookRecommendation(latestInsight.content);
+                } catch {
+                    return null;
+                }
+            })()
             : null;
 
         return NextResponse.json({
@@ -67,12 +73,12 @@ export async function GET() {
                 model: analysis.model,
                 profile: analysis.profile,
             },
-            latestBookInsight: recommendation?.success && latestInsight
+            latestBookInsight: recommendation && latestInsight
                 ? {
                     id: latestInsight.id,
                     createdAt: latestInsight.createdAt,
                     model: latestInsight.model,
-                    recommendation: recommendation.data,
+                    recommendation,
                 }
                 : null,
             canRecommend: true,

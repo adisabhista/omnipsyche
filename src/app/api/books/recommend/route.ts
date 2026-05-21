@@ -4,10 +4,10 @@ import { getLatestUserAnalysis, getLatestUserProfile } from "@/lib/analysis-data
 import {
     buildBookRecommendationPrompt,
     buildBookRecommendationRepairPrompt,
-    bookRecommendationSchema,
     getAvailableProfileFactors,
     normalizeBookRecommendation,
 } from "@/lib/book-recommendations";
+import { analyzeCollectionPattern } from "@/lib/books/collection-pattern";
 import { requireCurrentUserId } from "@/lib/current-user";
 import { cleanAndParseJSON } from "@/lib/personality-parser";
 import { prisma } from "@/lib/prisma";
@@ -63,7 +63,13 @@ export async function GET() {
             orderBy: { createdAt: "desc" },
         });
         const recommendation = latestInsight
-            ? bookRecommendationSchema.safeParse(latestInsight.content)
+            ? (() => {
+                try {
+                    return normalizeBookRecommendation(latestInsight.content);
+                } catch {
+                    return null;
+                }
+            })()
             : null;
         const collection = await prisma.userBook.findMany({
             where: { userId: authResult.userId },
@@ -81,8 +87,8 @@ export async function GET() {
                 model: analysis.model,
                 profile: analysis.profile,
             },
-            recommendation: recommendation?.success ? recommendation.data : null,
-            bookInsightId: recommendation?.success ? latestInsight?.id : null,
+            recommendation,
+            bookInsightId: recommendation ? latestInsight?.id : null,
             collection,
             error: null,
         });
@@ -114,12 +120,22 @@ export async function POST() {
         }
 
         const availableFactors = getAvailableProfileFactors(profile, analysis.parsedJson);
-        const collection = await prisma.userBook.findMany({
-            where: { userId: authResult.userId },
-            orderBy: { createdAt: "desc" },
-        });
+        const [collection, settings, latestBookInsight] = await Promise.all([
+            prisma.userBook.findMany({
+                where: { userId: authResult.userId },
+                orderBy: { createdAt: "desc" },
+            }),
+            prisma.userSettings.findUnique({
+                where: { userId: authResult.userId },
+            }),
+            prisma.bookInsight.findFirst({
+                where: { profileId: profile.id },
+                orderBy: { createdAt: "desc" },
+            }),
+        ]);
         const unfinishedBooks = collection.filter((book) => ["owned", "reading", "wishlist"].includes(book.status));
         const finishedBooks = collection.filter((book) => book.status === "finished");
+        const collectionPattern = analyzeCollectionPattern(collection);
         const prompt = buildBookRecommendationPrompt({
             profile,
             analysisJson: analysis.parsedJson,
@@ -127,6 +143,9 @@ export async function POST() {
             availableFactors,
             unfinishedBooks,
             finishedBooks,
+            settings,
+            collectionPattern,
+            latestBookInsight: latestBookInsight?.content ?? null,
         });
 
         let rawResponse = "";
