@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { ArrowLeft, ArrowRight } from "lucide-react";
+import { ArrowLeft, ArrowRight, ClipboardCheck } from "lucide-react";
 import { RightRail, StatusList, SurfaceCard } from "@/components/PlatformCards";
 import { getTypologyFramework, typologyFrameworks, typologyTypeSlug } from "@/data/typology-frameworks";
 
@@ -83,6 +83,20 @@ export default async function TypologyFrameworkPage({ params }: PageProps) {
                         Buka detail tipe untuk melihat pola utama, mistype umum, pertanyaan pembeda, dan eksplorasi AI singkat.
                     </p>
                 </SurfaceCard>
+                {system === "mbti" && (
+                    <SurfaceCard title="Tes MBTI" eyebrow="Devil.ai">
+                        <p className="text-sm leading-6 text-slate-500">
+                            Buat tes MBTI dari Devil.ai dan impor hasilnya ke profil OmniPsyche.
+                        </p>
+                        <Link
+                            href="/tipologi/mbti/tes"
+                            className="mt-4 inline-flex items-center gap-2 rounded-lg bg-cyan-300 px-4 py-2.5 text-sm font-semibold text-slate-950 transition hover:bg-cyan-200"
+                        >
+                            <ClipboardCheck className="h-4 w-4" />
+                            Tes MBTI dengan Devil.ai
+                        </Link>
+                    </SurfaceCard>
+                )}
             </RightRail>
         </div>
     );

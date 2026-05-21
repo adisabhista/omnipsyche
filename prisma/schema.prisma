@@ -21,6 +21,7 @@ model User {
   books                UserBook[]
   settings             UserSettings?
   profileValidations   ProfileValidation[]
+  externalMbtiTests    ExternalMbtiTest[]
 
   @@index([createdAt])
 }
@@ -114,6 +115,25 @@ model BookInsight {
 
   @@index([profileId])
   @@index([analysisId])
+  @@index([createdAt])
+}
+
+model ExternalMbtiTest {
+  id          String    @id @default(cuid())
+  userId      String
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  provider    String    @default("devil.ai")
+  testId      String
+  testUrl     String
+  status      String    @default("pending")
+  prediction  String?
+  resultsPage String?
+  rawResult   Json?
+  createdAt   DateTime  @default(now())
+  completedAt DateTime?
+
+  @@unique([provider, testId])
+  @@index([userId])
   @@index([createdAt])
 }
 

@@ -10,6 +10,7 @@ import {
     BarChart3,
     BookOpen,
     BriefcaseBusiness,
+    ClipboardCheck,
     Compass,
     Home,
     Layers3,
@@ -26,6 +27,7 @@ import AuthStatus from "@/components/AuthStatus";
 const navItems = [
     { href: "/", label: "Beranda", icon: Home },
     { href: "/tipologi", label: "Tipologi", icon: Layers3 },
+    { href: "/tipologi/mbti/tes", label: "Tes MBTI", icon: ClipboardCheck },
     { href: "/bangun-profil", label: "Bangun Profil", icon: UserRoundCog },
     { href: "/analisis", label: "Analisis", icon: BarChart3 },
     { href: "/validasi-profil", label: "Validasi Profil", icon: ShieldCheck },
@@ -34,6 +36,26 @@ const navItems = [
     { href: "/riwayat", label: "Riwayat", icon: Archive },
     { href: "/settings", label: "Pengaturan", icon: Settings },
 ];
+
+function getActiveNavHref(pathname: string, items: { href: string }[]) {
+    const normalizedPath = pathname.replace(/\/$/, "") || "/";
+
+    const matches = items
+        .map((item) => ({
+            href: item.href,
+            normalizedHref: item.href.replace(/\/$/, "") || "/",
+        }))
+        .filter((item) => {
+            if (item.normalizedHref === "/") {
+                return normalizedPath === "/";
+            }
+
+            return normalizedPath === item.normalizedHref || normalizedPath.startsWith(`${item.normalizedHref}/`);
+        })
+        .sort((a, b) => b.normalizedHref.length - a.normalizedHref.length);
+
+    return matches[0]?.href ?? null;
+}
 
 const pageMeta: Record<string, { title: string; subtitle: string; action: string }> = {
     "/": {
@@ -81,11 +103,29 @@ const pageMeta: Record<string, { title: string; subtitle: string; action: string
         subtitle: "Kelola preferensi aplikasi dan data personal.",
         action: "Simpan Pengaturan",
     },
+    "/tipologi/mbti/tes": {
+        title: "Tes MBTI",
+        subtitle: "Buat tes MBTI Devil.ai dan impor hasilnya sebagai data pendukung.",
+        action: "Buat Tes",
+    },
 };
+
+function resolvePageMeta(pathname: string) {
+    if (pageMeta[pathname]) return pageMeta[pathname];
+    // Match sub-routes like /tipologi/mbti/tes
+    const segments = pathname.split("/").filter(Boolean);
+    while (segments.length > 1) {
+        segments.pop();
+        const parent = "/" + segments.join("/");
+        if (pageMeta[parent]) return pageMeta[parent];
+    }
+    return pageMeta["/"];
+}
 
 export default function AppShell({ children }: { children: React.ReactNode }) {
     const pathname = usePathname();
-    const meta = pageMeta[pathname] ?? pageMeta["/"];
+    const meta = resolvePageMeta(pathname);
+    const activeHref = getActiveNavHref(pathname, navItems);
     const { status } = useSession();
     const [completeness, setCompleteness] = useState<number | null>(null);
     const [hasProfile, setHasProfile] = useState<boolean>(false);
@@ -180,7 +220,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
                     <nav className={clsx("min-h-0 flex-1 space-y-1 overflow-y-auto py-5", sidebarCollapsed ? "px-3" : "px-3")}>
                         {navItems.map((item) => {
                             const Icon = item.icon;
-                            const active = pathname === item.href;
+                            const active = item.href === activeHref;
                             return (
                                 <Link
                                     key={item.href}
@@ -267,7 +307,13 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
                             </div>
                             <AuthStatus />
                             <Link
-                                    href={pathname === "/" ? "/bangun-profil" : pathname}
+                                    href={
+                                        pathname === "/"
+                                            ? "/bangun-profil"
+                                            : meta.action === "Buat Tes"
+                                                ? "/tipologi/mbti/tes"
+                                                : pathname
+                                    }
                                     className="rounded-lg bg-cyan-300 px-4 py-2 text-sm font-semibold text-slate-950 transition hover:bg-cyan-200"
                                 >
                                     {meta.action}

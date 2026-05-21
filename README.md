@@ -55,6 +55,10 @@
     GOOGLE_CLOUD_LOCATION="us-central1"
     VERTEX_AI_MODEL="gemini-2.5-flash"
     GOOGLE_GENAI_USE_VERTEXAI="true"
+
+    DEVIL_AI_API_KEY=""
+    DEVIL_AI_BASE_URL="https://api.devil.ai/v1"
+    DEVIL_AI_LANG="en"
     ```
 
 7. Install dependencies, run the database migration, and start the development server:
@@ -70,6 +74,8 @@
 Do not use `GEMINI_API_KEY` or `NEXT_PUBLIC_GEMINI_API_KEY`. OmniPsyche does not require a Gemini API key and does not expose AI credentials to the browser.
 
 Fallback compatibility names are also supported on the server: `GOOGLE_CLOUD_PROJECT`, `GOOGLE_CLOUD_PROJECT_ID`, `GOOGLE_CLOUD_LOCATION`, and `VERTEX_AI_MODEL`.
+
+For Devil.ai MBTI tests, keep `DEVIL_AI_API_KEY` server-side only. If Devil.ai Indonesian test questions appear blank, use `DEVIL_AI_LANG="en"` because `lang=id` may have incomplete question translations. Restart the dev server and create a new test link after changing this value; old `test_url` links keep their original language.
 
 ## Backend Test Checklist
 
