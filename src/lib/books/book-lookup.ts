@@ -24,6 +24,11 @@ const aiFallbackSchema = z.object({
     })).min(1).max(3),
 });
 
+const providerRequestHeaders = {
+    "Accept": "application/json",
+    "User-Agent": "OmniPsyche/0.1 (https://localhost; book metadata lookup)",
+};
+
 function compact<T>(items: Array<T | null | undefined>) {
     return items.filter((item): item is T => Boolean(item));
 }
@@ -40,22 +45,52 @@ function dedupeCandidates(candidates: BookLookupCandidate[]) {
     const seen = new Set<string>();
 
     return candidates.filter((candidate) => {
-        const key = `${candidate.title.toLowerCase().trim()}::${candidate.author?.toLowerCase().trim() ?? ""}`;
+        const key = normalizeBookKey(candidate.title, candidate.author);
         if (seen.has(key)) return false;
         seen.add(key);
         return true;
     });
 }
 
+function debugBookLookup(message: string, value: unknown) {
+    if (process.env.NODE_ENV === "development") {
+        console.log(message, value);
+    }
+}
+
 async function lookupGoogleBooks(title: string, author?: string): Promise<BookLookupCandidate[]> {
-    const query = author ? `intitle:${title} inauthor:${author}` : `intitle:${title}`;
+    const queries = [
+        author ? `${title} ${author}` : title,
+        author ? `"${title}" "${author}"` : `"${title}"`,
+        author ? `intitle:"${title}" inauthor:"${author}"` : `intitle:"${title}"`,
+    ];
+
+    for (const query of queries) {
+        debugBookLookup("Google Books query:", query);
+        const candidates = await fetchGoogleBooksCandidates(query);
+        if (candidates.length > 0) return candidates;
+    }
+
+    return [];
+}
+
+async function fetchGoogleBooksCandidates(query: string): Promise<BookLookupCandidate[]> {
     const url = new URL("https://www.googleapis.com/books/v1/volumes");
     url.searchParams.set("q", query);
     url.searchParams.set("maxResults", "5");
     url.searchParams.set("printType", "books");
 
-    const response = await fetch(url, { next: { revalidate: 60 * 60 * 24 } });
-    if (!response.ok) return [];
+    const response = await fetch(url, {
+        headers: providerRequestHeaders,
+        next: { revalidate: 60 * 60 * 24 },
+    });
+    if (!response.ok) {
+        console.warn("Google Books lookup returned non-OK response:", {
+            status: response.status,
+            statusText: response.statusText,
+        });
+        return [];
+    }
 
     const data = await response.json() as {
         items?: Array<{
@@ -92,13 +127,45 @@ async function lookupGoogleBooks(title: string, author?: string): Promise<BookLo
 }
 
 async function lookupOpenLibrary(title: string, author?: string): Promise<BookLookupCandidate[]> {
+    const titleAuthorCandidates = await fetchOpenLibraryCandidates((url) => {
+        url.searchParams.set("title", title);
+        if (author) url.searchParams.set("author", author);
+    });
+
+    debugBookLookup("Open Library title/author candidates:", titleAuthorCandidates.length);
+    if (titleAuthorCandidates.length > 0) return titleAuthorCandidates;
+
+    const queryCandidates = await fetchOpenLibraryCandidates((url) => {
+        url.searchParams.set("q", author ? `${title} ${author}` : title);
+    });
+
+    debugBookLookup("Open Library q fallback candidates:", queryCandidates.length);
+    if (queryCandidates.length > 0) return queryCandidates;
+
+    const titleQueryCandidates = await fetchOpenLibraryCandidates((url) => {
+        url.searchParams.set("q", title);
+    });
+
+    debugBookLookup("Open Library q title-only candidates:", titleQueryCandidates.length);
+    return titleQueryCandidates;
+}
+
+async function fetchOpenLibraryCandidates(setSearchParams: (url: URL) => void): Promise<BookLookupCandidate[]> {
     const url = new URL("https://openlibrary.org/search.json");
-    url.searchParams.set("title", title);
-    if (author) url.searchParams.set("author", author);
+    setSearchParams(url);
     url.searchParams.set("limit", "5");
 
-    const response = await fetch(url, { next: { revalidate: 60 * 60 * 24 } });
-    if (!response.ok) return [];
+    const response = await fetch(url, {
+        headers: providerRequestHeaders,
+        next: { revalidate: 60 * 60 * 24 },
+    });
+    if (!response.ok) {
+        console.warn("Open Library lookup returned non-OK response:", {
+            status: response.status,
+            statusText: response.statusText,
+        });
+        return [];
+    }
 
     const data = await response.json() as {
         docs?: Array<{
@@ -164,12 +231,17 @@ Schema:
 export async function lookupBookMetadata(input: { title: string; author?: string }) {
     let googleCandidates: BookLookupCandidate[] = [];
     let openLibraryCandidates: BookLookupCandidate[] = [];
+    let aiFallbackCandidates: BookLookupCandidate[] = [];
+
+    debugBookLookup("Book lookup input:", { title: input.title, author: input.author });
 
     try {
         googleCandidates = await lookupGoogleBooks(input.title, input.author);
     } catch (error) {
         console.warn("Google Books lookup failed:", error);
     }
+
+    debugBookLookup("Google Books candidates:", googleCandidates.length);
 
     if (googleCandidates.length > 0) {
         return dedupeCandidates(googleCandidates).slice(0, 5);
@@ -185,7 +257,16 @@ export async function lookupBookMetadata(input: { title: string; author?: string
         return dedupeCandidates(openLibraryCandidates).slice(0, 5);
     }
 
-    return dedupeCandidates(await lookupAiFallback(input.title, input.author)).slice(0, 3);
+    const shouldUseAiFallback = googleCandidates.length === 0 && openLibraryCandidates.length === 0;
+    debugBookLookup("AI fallback used:", shouldUseAiFallback);
+
+    try {
+        aiFallbackCandidates = await lookupAiFallback(input.title, input.author);
+    } catch (error) {
+        console.warn("AI book lookup fallback failed:", error);
+    }
+
+    return dedupeCandidates(aiFallbackCandidates).slice(0, 3);
 }
 
 export function normalizeBookKey(title: string, author?: string | null) {

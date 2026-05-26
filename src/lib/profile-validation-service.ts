@@ -7,8 +7,8 @@ import { buildProfileValidationPrompt, buildProfileValidationRepairPrompt } from
 import { profileValidationSchema, type ProfileValidationResult } from "@/lib/profile-validation-schema";
 import { generateProfileValidation } from "@/lib/vertex-ai";
 
-export const NO_PROFILE_VALIDATION_MESSAGE = "Bangun profil terlebih dahulu sebelum melakukan validasi.";
-export const INVALID_PROFILE_VALIDATION_MESSAGE = "Gagal membuat validasi profil yang valid.";
+export const NO_PROFILE_VALIDATION_MESSAGE = "Bangun profil terlebih dahulu sebelum memeriksa konsistensi.";
+export const INVALID_PROFILE_VALIDATION_MESSAGE = "Gagal memeriksa konsistensi profil.";
 
 type JsonValue = Prisma.JsonValue;
 
@@ -150,7 +150,7 @@ function normalizeResult(result: ProfileValidationResult, input: ProfileValidati
             confidence: "low",
             warnings: Array.from(new Set([
                 ...normalized.warnings,
-                "Data pendukung masih terbatas. Hasil validasi mungkin belum kuat.",
+                "Data pendukung masih terbatas. Hasil pemeriksaan mungkin belum kuat.",
             ])),
             data_quality: {
                 ...normalized.data_quality,

@@ -13,7 +13,7 @@ export async function GET() {
     } catch (error) {
         console.error("Profile validation latest load failed:", error);
         return NextResponse.json(
-            { error: "Gagal memuat validasi profil." },
+            { error: "Gagal memuat konsistensi profil." },
             { status: 500 }
         );
     }

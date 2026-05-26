@@ -17,7 +17,7 @@ export async function POST() {
     } catch (error) {
         console.error("Profile validation generation failed:", error);
         return NextResponse.json(
-            { error: "Gagal membuat validasi profil yang valid." },
+            { error: "Gagal memeriksa konsistensi profil." },
             { status: 500 }
         );
     }

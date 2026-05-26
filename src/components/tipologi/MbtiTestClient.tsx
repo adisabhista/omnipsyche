@@ -2,7 +2,6 @@
 
 import { useState } from "react";
 import {
-    ArrowRight,
     CheckCircle2,
     Clock,
     ExternalLink,
@@ -13,6 +12,7 @@ import {
     XCircle,
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
+import { MbtiProfileComparisonCard } from "@/components/mbti/MbtiProfileComparisonCard";
 
 interface TestRecord {
     id: string;
@@ -51,6 +51,8 @@ export default function MbtiTestClient({ initialTests, currentMbti }: MbtiTestCl
     const [latestCreated, setLatestCreated] = useState<{ testId: string; testUrl: string } | null>(null);
     const [checkResult, setCheckResult] = useState<CheckResult | null>(null);
     const [appliedMbti, setAppliedMbti] = useState<string | null>(null);
+    const [keptCurrentProfile, setKeptCurrentProfile] = useState(false);
+    const [showFunctionDetails, setShowFunctionDetails] = useState(false);
 
     const [creatingTest, setCreatingTest] = useState(false);
     const [checkingTest, setCheckingTest] = useState(false);
@@ -59,14 +61,27 @@ export default function MbtiTestClient({ initialTests, currentMbti }: MbtiTestCl
     const [error, setError] = useState<string | null>(null);
 
     const activeTestId = latestCreated?.testId ?? tests.find((t) => t.status === "pending")?.testId ?? null;
-    const completedResult = checkResult?.status === "completed" ? checkResult : null;
+    const latestCompletedTest = tests.find((t) => t.status === "completed" && t.prediction);
+    const completedResult = checkResult?.status === "completed"
+        ? checkResult
+        : latestCompletedTest
+            ? {
+                  status: latestCompletedTest.status,
+                  prediction: latestCompletedTest.prediction ?? undefined,
+                  resultsPage: latestCompletedTest.resultsPage ?? undefined,
+                  completedAt: latestCompletedTest.completedAt ?? undefined,
+              }
+            : null;
+    const completedTestId = checkResult?.status === "completed" ? activeTestId : latestCompletedTest?.testId ?? null;
     const displayMbti = appliedMbti ?? currentMbti;
+    const alreadyApplied = !!completedResult?.prediction && !!displayMbti && displayMbti.toUpperCase() === completedResult.prediction.toUpperCase();
 
     async function handleCreateTest() {
         setCreatingTest(true);
         setError(null);
         setCheckResult(null);
         setLatestCreated(null);
+        setKeptCurrentProfile(false);
 
         try {
             const res = await fetch("/api/external-tests/mbti/devil/new", { method: "POST" });
@@ -101,6 +116,7 @@ export default function MbtiTestClient({ initialTests, currentMbti }: MbtiTestCl
             if (!res.ok) throw new Error(data.error || "Gagal mengecek hasil tes.");
 
             setCheckResult(data);
+            setKeptCurrentProfile(false);
             if (data.status === "completed") refreshHistory();
         } catch (err) {
             setError(err instanceof Error ? err.message : "Gagal mengecek hasil tes.");
@@ -110,7 +126,7 @@ export default function MbtiTestClient({ initialTests, currentMbti }: MbtiTestCl
     }
 
     async function handleApplyToProfile() {
-        if (!completedResult?.prediction || !activeTestId) return;
+        if (!completedResult?.prediction || !completedTestId) return;
 
         setApplyingMbti(true);
         setError(null);
@@ -119,7 +135,7 @@ export default function MbtiTestClient({ initialTests, currentMbti }: MbtiTestCl
             const res = await fetch("/api/external-tests/mbti/devil/apply-to-profile", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ testId: activeTestId }),
+                body: JSON.stringify({ testId: completedTestId }),
             });
             const data = await res.json();
 
@@ -157,6 +173,7 @@ export default function MbtiTestClient({ initialTests, currentMbti }: MbtiTestCl
                     <p className="mt-3 max-w-2xl text-sm leading-6 text-slate-500">
                         Gunakan tes MBTI dari Devil.ai sebagai data pendukung eksplorasi tipe. Hasil tes ini bersifat
                         estimasi dan bukan penentu absolut — gunakan bersama pertanyaan pembeda dan refleksi pengalaman nyata.
+                        Tes ini berjalan di Devil.ai. Setelah selesai, kembali ke OmniPsyche lalu klik Cek Hasil Tes.
                     </p>
                 </section>
 
@@ -177,7 +194,7 @@ export default function MbtiTestClient({ initialTests, currentMbti }: MbtiTestCl
                 <section className="rounded-lg border border-slate-200 bg-white/85 p-5 shadow-[0_20px_70px_rgba(15,23,42,0.08)] dark:border-white/10 dark:bg-white/[0.045] dark:shadow-[0_20px_70px_rgba(0,0,0,0.22)]">
                     <h3 className="font-semibold text-slate-950 dark:text-slate-100">Buat Tes Baru</h3>
                     <p className="mt-2 text-sm text-slate-500">
-                        Buat tautan tes MBTI baru. Anda akan mengerjakan tes di situs Devil.ai, lalu kembali ke sini untuk mengecek hasilnya.
+                        Buat tautan tes MBTI baru. Kamu akan mengerjakan tes di situs Devil.ai, lalu kembali ke sini untuk mengecek hasilnya.
                     </p>
                     <div className="mt-4 flex flex-wrap items-center gap-3">
                         <button
@@ -299,49 +316,79 @@ export default function MbtiTestClient({ initialTests, currentMbti }: MbtiTestCl
                                 </div>
                             )}
 
+                            {completedResult.prediction && (
+                                <div className="mt-5">
+                                    <MbtiProfileComparisonCard
+                                        currentMbti={displayMbti}
+                                        devilMbti={completedResult.prediction}
+                                        alreadyApplied={alreadyApplied}
+                                        applying={applyingMbti}
+                                        dismissed={keptCurrentProfile}
+                                        onApply={handleApplyToProfile}
+                                        onKeepCurrent={() => setKeptCurrentProfile(true)}
+                                    />
+                                </div>
+                            )}
+
                             {/* Cognitive functions */}
-                            <div className="mt-5 grid gap-4 sm:grid-cols-2">
-                                {completedResult.traitOrderConscious && completedResult.traitOrderConscious.length > 0 && (
-                                    <div className="rounded-lg border border-slate-200 bg-slate-50 p-4 dark:border-white/10 dark:bg-black/25">
-                                        <div className="mb-3 flex items-center gap-1.5">
-                                            <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">
-                                                Fungsi Utama
-                                            </p>
-                                            <span title="Fungsi dominan yang kamu gunakan secara sadar dalam kehidupan sehari-hari" className="cursor-help text-slate-400">
-                                                <Info className="h-3 w-3" />
-                                            </span>
-                                        </div>
-                                        <div className="space-y-2">
-                                            {completedResult.traitOrderConscious.map((fn, i) => (
-                                                <div key={fn} className="flex items-center justify-between gap-3">
-                                                    <span className="text-xs text-slate-400">{CONSCIOUS_LABELS[i] ?? `#${i + 1}`}</span>
-                                                    <span className="text-sm font-medium text-slate-700 dark:text-slate-200">{fn}</span>
-                                                </div>
-                                            ))}
-                                        </div>
+                            {(completedResult.traitOrderConscious?.length || completedResult.traitOrderShadow?.length) ? (
+                                <div className="mt-5 rounded-lg border border-slate-200 bg-slate-50 p-4 dark:border-white/10 dark:bg-black/25">
+                                    <div className="flex flex-wrap items-center justify-between gap-3">
+                                        <h4 className="font-semibold text-slate-950 dark:text-slate-100">Detail Fungsi Kognitif</h4>
+                                        <button
+                                            type="button"
+                                            onClick={() => setShowFunctionDetails((current) => !current)}
+                                            className="rounded-lg border border-slate-200 px-3 py-2 text-sm font-semibold text-slate-700 transition hover:border-cyan-300 hover:text-cyan-700 dark:border-white/10 dark:text-slate-200 dark:hover:border-cyan-300/45 dark:hover:text-cyan-200"
+                                        >
+                                            {showFunctionDetails ? "Sembunyikan Detail" : "Tampilkan Detail"}
+                                        </button>
                                     </div>
-                                )}
-                                {completedResult.traitOrderShadow && completedResult.traitOrderShadow.length > 0 && (
-                                    <div className="rounded-lg border border-slate-200 bg-slate-50 p-4 dark:border-white/10 dark:bg-black/25">
-                                        <div className="mb-3 flex items-center gap-1.5">
-                                            <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">
-                                                Fungsi Bayangan
-                                            </p>
-                                            <span title="Fungsi yang muncul saat kamu keluar dari zona nyaman atau sedang stres" className="cursor-help text-slate-400">
-                                                <Info className="h-3 w-3" />
-                                            </span>
-                                        </div>
-                                        <div className="space-y-2">
-                                            {completedResult.traitOrderShadow.map((fn, i) => (
-                                                <div key={fn} className="flex items-center justify-between gap-3">
-                                                    <span className="text-xs text-slate-400">{SHADOW_LABELS[i] ?? `#${i + 1}`}</span>
-                                                    <span className="text-sm font-medium text-slate-700 dark:text-slate-200">{fn}</span>
+                                    {showFunctionDetails && (
+                                        <div className="mt-4 grid gap-4 sm:grid-cols-2">
+                                            {completedResult.traitOrderConscious && completedResult.traitOrderConscious.length > 0 && (
+                                                <div className="rounded-lg border border-slate-200 bg-white p-4 dark:border-white/10 dark:bg-black/25">
+                                                    <div className="mb-3 flex items-center gap-1.5">
+                                                        <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">
+                                                            Fungsi Utama
+                                                        </p>
+                                                        <span title="Fungsi dominan yang kamu gunakan secara sadar dalam kehidupan sehari-hari" className="cursor-help text-slate-400">
+                                                            <Info className="h-3 w-3" />
+                                                        </span>
+                                                    </div>
+                                                    <div className="space-y-2">
+                                                        {completedResult.traitOrderConscious.map((fn, i) => (
+                                                            <div key={fn} className="flex items-center justify-between gap-3">
+                                                                <span className="text-xs text-slate-400">{CONSCIOUS_LABELS[i] ?? `#${i + 1}`}</span>
+                                                                <span className="text-sm font-medium text-slate-700 dark:text-slate-200">{fn}</span>
+                                                            </div>
+                                                        ))}
+                                                    </div>
                                                 </div>
-                                            ))}
+                                            )}
+                                            {completedResult.traitOrderShadow && completedResult.traitOrderShadow.length > 0 && (
+                                                <div className="rounded-lg border border-slate-200 bg-white p-4 dark:border-white/10 dark:bg-black/25">
+                                                    <div className="mb-3 flex items-center gap-1.5">
+                                                        <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">
+                                                            Fungsi Bayangan
+                                                        </p>
+                                                        <span title="Fungsi yang muncul saat kamu keluar dari zona nyaman atau sedang stres" className="cursor-help text-slate-400">
+                                                            <Info className="h-3 w-3" />
+                                                        </span>
+                                                    </div>
+                                                    <div className="space-y-2">
+                                                        {completedResult.traitOrderShadow.map((fn, i) => (
+                                                            <div key={fn} className="flex items-center justify-between gap-3">
+                                                                <span className="text-xs text-slate-400">{SHADOW_LABELS[i] ?? `#${i + 1}`}</span>
+                                                                <span className="text-sm font-medium text-slate-700 dark:text-slate-200">{fn}</span>
+                                                            </div>
+                                                        ))}
+                                                    </div>
+                                                </div>
+                                            )}
                                         </div>
-                                    </div>
-                                )}
-                            </div>
+                                    )}
+                                </div>
+                            ) : null}
 
                             {/* Matches */}
                             {completedResult.matches && completedResult.matches.length > 0 && (
@@ -373,35 +420,6 @@ export default function MbtiTestClient({ initialTests, currentMbti }: MbtiTestCl
                                 </a>
                             )}
 
-                            {/* Apply to profile */}
-                            <div className="mt-5 border-t border-slate-200 pt-5 dark:border-white/10">
-                                <p className="mb-3 text-xs text-slate-500">
-                                    Terapkan hasil prediksi sebagai MBTI di profil aktif. Hasil tetap bisa diedit di halaman profil.
-                                </p>
-                                <button
-                                    id="btn-apply-mbti"
-                                    onClick={handleApplyToProfile}
-                                    disabled={applyingMbti || !!appliedMbti}
-                                    className="inline-flex items-center gap-2 rounded-lg bg-emerald-500 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-emerald-400 disabled:opacity-50 disabled:cursor-not-allowed"
-                                >
-                                    {applyingMbti ? (
-                                        <>
-                                            <Loader2 className="h-4 w-4 animate-spin" />
-                                            Menyimpan...
-                                        </>
-                                    ) : appliedMbti ? (
-                                        <>
-                                            <CheckCircle2 className="h-4 w-4" />
-                                            Tersimpan
-                                        </>
-                                    ) : (
-                                        <>
-                                            <ArrowRight className="h-4 w-4" />
-                                            Simpan ke Profil Saya
-                                        </>
-                                    )}
-                                </button>
-                            </div>
                         </motion.section>
                     )}
                 </AnimatePresence>

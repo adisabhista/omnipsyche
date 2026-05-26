@@ -6,6 +6,7 @@ import { useSession } from "next-auth/react";
 import { AlertTriangle, CheckCircle2, HelpCircle, Loader2, ShieldCheck, Sparkles } from "lucide-react";
 import { toast } from "sonner";
 import { MetricCard, RightRail, StatusList, SurfaceCard } from "@/components/PlatformCards";
+import { EvidenceSourceCard } from "@/components/profile/EvidenceSourceCard";
 import type { ProfileValidationResult } from "@/lib/profile-validation-schema";
 
 type StoredValidation = {
@@ -86,7 +87,7 @@ export default function ValidasiProfilPage() {
             const profileData = await profileResponse.json();
 
             if (!validationResponse.ok) {
-                throw new Error(validationData?.error || "Gagal memuat validasi profil.");
+                throw new Error(validationData?.error || "Gagal memuat konsistensi profil.");
             }
             if (!profileResponse.ok) {
                 throw new Error(profileData?.error || "Gagal memuat profil aktif.");
@@ -96,7 +97,7 @@ export default function ValidasiProfilPage() {
             setHasProfile(!!profileData && !profileData.error);
         } catch (fetchError) {
             console.error("Profile validation page load failed:", fetchError);
-            setError(fetchError instanceof Error ? fetchError.message : "Gagal memuat validasi profil.");
+            setError(fetchError instanceof Error ? fetchError.message : "Gagal memuat konsistensi profil.");
         } finally {
             setLoading(false);
         }
@@ -122,16 +123,16 @@ export default function ValidasiProfilPage() {
             const data = await response.json();
 
             if (!response.ok) {
-                throw new Error(data?.error || "Gagal membuat validasi profil yang valid.");
+                throw new Error(data?.error || "Gagal memeriksa konsistensi profil.");
             }
 
             setValidation(data.validation);
             setHasProfile(true);
-            toast.success("Profil berhasil divalidasi!");
+            toast.success("Konsistensi profil berhasil diperiksa!");
         } catch (generateError) {
-            const message = generateError instanceof Error ? generateError.message : "Gagal membuat validasi profil yang valid.";
+            const message = generateError instanceof Error ? generateError.message : "Gagal memeriksa konsistensi profil.";
             setError(message);
-            toast.error("Gagal melakukan validasi.");
+            toast.error("Gagal memeriksa konsistensi.");
             if (message.includes("Bangun profil")) setHasProfile(false);
         } finally {
             setGenerating(false);
@@ -140,10 +141,10 @@ export default function ValidasiProfilPage() {
 
     if (loading || status === "loading") {
         return (
-            <SurfaceCard title="Validasi Profil">
+            <SurfaceCard title="Konsistensi Profil">
                 <div className="flex min-h-72 flex-col items-center justify-center">
                     <Loader2 className="h-8 w-8 animate-spin text-cyan-300" />
-                    <p className="mt-4 text-sm text-slate-400">Memuat data validasi profil...</p>
+                    <p className="mt-4 text-sm text-slate-400">Memuat data konsistensi profil...</p>
                 </div>
             </SurfaceCard>
         );
@@ -151,9 +152,9 @@ export default function ValidasiProfilPage() {
 
     if (status !== "authenticated") {
         return (
-            <SurfaceCard title="Validasi Profil">
+            <SurfaceCard title="Konsistensi Profil">
                 <div className="py-10 text-center">
-                    <p className="text-sm text-slate-400">Masuk terlebih dahulu untuk melakukan validasi profil.</p>
+                    <p className="text-sm text-slate-400">Masuk terlebih dahulu untuk memeriksa konsistensi profil.</p>
                     <Link href="/login" className="mt-5 inline-flex rounded-lg bg-cyan-300 px-4 py-2 text-sm font-semibold text-slate-950 hover:bg-cyan-200">
                         Masuk
                     </Link>
@@ -173,15 +174,18 @@ export default function ValidasiProfilPage() {
                     </div>
                 )}
 
-                <SurfaceCard title="Validasi Profil" eyebrow="Validasi manual">
+                <SurfaceCard title="Konsistensi Profil" eyebrow="Pemeriksaan indikatif">
                     <div className="flex flex-col gap-5 md:flex-row md:items-start md:justify-between">
                         <div className="max-w-3xl">
                             <div className="flex items-center gap-3">
                                 <ShieldCheck className="h-6 w-6 text-cyan-300" />
-                                <p className="text-sm font-semibold text-slate-800 dark:text-slate-200">Analisis konsistensi profil</p>
+                                <p className="text-sm font-semibold text-slate-800 dark:text-slate-200">Pemeriksaan konsistensi profil</p>
                             </div>
                             <p className="mt-4 text-sm leading-7 text-slate-600 dark:text-slate-500">
-                                Analisis ini membantu melihat apakah profil tipologi Anda selaras dengan data pendukung seperti minat, koleksi buku, pendidikan, dan hasil analisis. Hasil ini bersifat indikatif, bukan kepastian mutlak.
+                                Periksa seberapa selaras data profil, hasil tes, analisis, minat, dan koleksi kamu. Hasil ini bersifat indikatif, bukan kepastian mutlak.
+                            </p>
+                            <p className="mt-2 text-sm leading-7 text-slate-600 dark:text-slate-500">
+                                Hasil ini bukan penentu tipe yang benar atau salah. Gunakan sebagai bahan refleksi.
                             </p>
                         </div>
                         <div title={!hasProfile ? "Lengkapi profil terlebih dahulu di halaman Bangun Profil" : undefined}>
@@ -191,7 +195,7 @@ export default function ValidasiProfilPage() {
                                 className="inline-flex items-center justify-center gap-2 rounded-lg bg-cyan-300 px-4 py-2.5 text-sm font-semibold text-slate-950 transition hover:bg-cyan-200 disabled:cursor-not-allowed disabled:opacity-60"
                             >
                                 {generating ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />}
-                                {generating ? "Menganalisis konsistensi profil..." : "Buat Validasi Profil"}
+                                {generating ? "Memeriksa konsistensi profil..." : "Cek Konsistensi Profil"}
                             </button>
                         </div>
                     </div>
@@ -200,18 +204,18 @@ export default function ValidasiProfilPage() {
                 {!hasProfile ? (
                     <SurfaceCard title="Profil Belum Tersedia">
                         <div className="py-10 text-center">
-                            <p className="text-sm text-slate-400">Bangun profil terlebih dahulu sebelum melakukan validasi.</p>
+                            <p className="text-sm text-slate-400">Bangun profil terlebih dahulu sebelum memeriksa konsistensi.</p>
                             <Link href="/bangun-profil" className="mt-5 inline-flex rounded-lg bg-cyan-300 px-5 py-2.5 text-sm font-semibold text-slate-950 hover:bg-cyan-200">
                                 Bangun Profil
                             </Link>
                         </div>
                     </SurfaceCard>
                 ) : !result ? (
-                    <SurfaceCard title="Belum Ada Validasi">
+                    <SurfaceCard title="Belum Ada Pemeriksaan">
                         <div className="py-10 text-center">
                             <HelpCircle className="mx-auto h-8 w-8 text-cyan-300" />
                             <p className="mx-auto mt-4 max-w-md text-sm leading-6 text-slate-400">
-                                Belum ada validasi profil. Klik Buat Validasi Profil untuk memulai.
+                                Belum ada pemeriksaan konsistensi profil. Klik Cek Konsistensi Profil untuk memulai.
                             </p>
                         </div>
                     </SurfaceCard>
@@ -219,7 +223,7 @@ export default function ValidasiProfilPage() {
                     <>
                         {result.confidence === "low" && (
                             <div className="rounded-lg border border-amber-300/25 bg-amber-300/10 p-4 text-sm leading-6 text-amber-100">
-                                Data pendukung masih terbatas. Hasil validasi mungkin belum kuat.
+                                Data pendukung masih terbatas. Hasil pemeriksaan mungkin belum kuat.
                             </div>
                         )}
 
@@ -228,6 +232,8 @@ export default function ValidasiProfilPage() {
                             <MetricCard label="Risiko Mistype" value={riskLabels[result.mistype_risk]} detail="Indikasi potensi yang perlu ditinjau." />
                             <MetricCard label="Tingkat Keyakinan" value={confidenceLabels[result.confidence]} detail="Kekuatan data pendukung saat ini." />
                         </div>
+
+                        <EvidenceSourceCard result={result} />
 
                         <SurfaceCard title="Kualitas Data">
                             <StatusList
@@ -322,7 +328,7 @@ export default function ValidasiProfilPage() {
                             </SurfaceCard>
                         )}
 
-                        <SurfaceCard title="Pertanyaan Validasi">
+                        <SurfaceCard title="Pertanyaan Refleksi">
                             <div className="grid gap-3 md:grid-cols-2">
                                 {result.validation_questions.map((question) => (
                                     <article key={question.question} className="rounded-lg border border-slate-200 bg-slate-50 p-4 dark:border-white/10 dark:bg-black/25">
@@ -362,7 +368,7 @@ export default function ValidasiProfilPage() {
             </div>
 
             <RightRail>
-                <SurfaceCard title="Status Validasi">
+                <SurfaceCard title="Status Konsistensi">
                     {validation ? (
                         <StatusList
                             items={[
@@ -372,13 +378,13 @@ export default function ValidasiProfilPage() {
                             ]}
                         />
                     ) : (
-                        <p className="text-sm leading-6 text-slate-500">Belum ada validasi profil.</p>
+                        <p className="text-sm leading-6 text-slate-500">Belum ada pemeriksaan konsistensi profil.</p>
                     )}
                 </SurfaceCard>
                 <SurfaceCard title="Catatan">
                     <div className="flex gap-3 text-sm leading-6 text-slate-500">
                         <CheckCircle2 className="mt-0.5 h-4 w-4 flex-none text-cyan-300" />
-                        Validasi dibuat hanya saat tombol generate ditekan.
+                        Pemeriksaan dibuat hanya saat tombol cek konsistensi ditekan.
                     </div>
                 </SurfaceCard>
             </RightRail>

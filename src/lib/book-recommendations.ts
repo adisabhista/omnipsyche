@@ -27,14 +27,14 @@ const recommendationModeSchema = z.enum([
 ]);
 
 const collectionRecommendationSchema = z.object({
-    bookId: z.string().nullable(),
+    bookId: z.string().nullable().optional().default(null),
     title: z.string().min(1),
     author: z.string().nullable(),
     status: statusSchema,
     priority: prioritySchema,
     why_read_this_first: z.string().min(1),
     best_for: z.string().min(1),
-    reading_order: z.number().int().min(1),
+    reading_order: z.number().int().min(1).optional().default(1),
 });
 
 const newRecommendationSchema = z.object({
@@ -44,19 +44,19 @@ const newRecommendationSchema = z.object({
     difficulty: z.enum(["beginner", "intermediate", "advanced"]),
     why_recommended: z.string().min(1),
     best_for: z.string().min(1),
-    reading_order: z.number().int().min(1),
+    reading_order: z.number().int().min(1).optional().default(1),
 });
 
 const recommendedCategorySchema = z.object({
-    rank: z.number().int().min(1),
+    rank: z.number().int().min(1).optional().default(1),
     name: categoryNameSchema,
-    fit_score: z.enum(["high", "medium"]),
+    fit_score: z.enum(["high", "medium"]).optional().default("medium"),
     recommendation_mode: recommendationModeSchema.default("profile_fit"),
     priority_reason: z.string().min(1),
-    related_profile_factors: z.array(z.string().min(1)),
+    related_profile_factors: z.array(z.string().min(1)).default([]),
     collection_context: z.string().min(1),
-    read_from_collection_first: z.array(collectionRecommendationSchema).max(3),
-    new_recommendations: z.array(newRecommendationSchema).max(3),
+    read_from_collection_first: z.array(collectionRecommendationSchema).default([]),
+    new_recommendations: z.array(newRecommendationSchema).default([]),
 });
 
 const balancingSuggestionSchema = z.object({
@@ -66,7 +66,7 @@ const balancingSuggestionSchema = z.object({
         title: z.string().min(1),
         author: z.string().min(1),
         why_optional: z.string().min(1),
-    })).max(3),
+    })),
 });
 
 export const bookRecommendationSchema = z.object({
@@ -87,8 +87,8 @@ export const bookRecommendationSchema = z.object({
         })),
     }),
     category_ranking_logic: z.string().min(1),
-    recommended_categories: z.array(recommendedCategorySchema).min(3).max(5),
-    balancing_suggestions: z.array(balancingSuggestionSchema).max(2).default([]),
+    recommended_categories: z.array(recommendedCategorySchema).min(1),
+    balancing_suggestions: z.array(balancingSuggestionSchema).default([]),
     reading_path: z.array(
         z.object({
             step: z.number().int().min(1),
@@ -98,44 +98,8 @@ export const bookRecommendationSchema = z.object({
             focus: z.string().min(1),
             reason: z.string().min(1),
         })
-    ).min(1),
-    warnings: z.array(z.string()),
-}).superRefine((value, context) => {
-    const totalItems = value.recommended_categories.reduce(
-        (total, category) => total + category.read_from_collection_first.length + category.new_recommendations.length,
-        0
-    );
-
-    if (totalItems < 6 || totalItems > 12) {
-        context.addIssue({
-            code: z.ZodIssueCode.custom,
-            message: "Total rekomendasi utama harus berada di antara 6 dan 12 item.",
-            path: ["recommended_categories"],
-        });
-    }
-
-    value.recommended_categories.forEach((category, index) => {
-        const itemCount = category.read_from_collection_first.length + category.new_recommendations.length;
-        if (itemCount === 0) {
-            context.addIssue({
-                code: z.ZodIssueCode.custom,
-                message: "Setiap kategori utama harus memiliki minimal satu rekomendasi.",
-                path: ["recommended_categories", index],
-            });
-        }
-    });
-
-    if (value.collection_analysis.owned_count >= 5) {
-        value.recommended_categories.slice(0, 2).forEach((category, index) => {
-            if (category.recommendation_mode === "balancing_blind_spot") {
-                context.addIssue({
-                    code: z.ZodIssueCode.custom,
-                    message: "Kategori penyeimbang tidak boleh menjadi dua rekomendasi pertama ketika koleksi sudah cukup kuat.",
-                    path: ["recommended_categories", index, "recommendation_mode"],
-                });
-            }
-        });
-    }
+    ).default([]),
+    warnings: z.array(z.string()).default([]),
 });
 
 export type BookRecommendation = z.infer<typeof bookRecommendationSchema>;
@@ -182,6 +146,10 @@ function asRecord(value: unknown): Record<string, unknown> {
     return typeof value === "object" && value !== null ? value as Record<string, unknown> : {};
 }
 
+function asArray(value: unknown): unknown[] {
+    return Array.isArray(value) ? value : [];
+}
+
 export function getAvailableProfileFactors(profile: ProfileContext, analysisJson: unknown) {
     const factors: string[] = [];
 
@@ -224,10 +192,30 @@ function normalizeRecommendationInput(input: BookRecommendationInput | unknown):
                 : [],
         },
         recommended_categories: Array.isArray(root.recommended_categories)
-            ? root.recommended_categories.map((category) => ({
-                ...asRecord(category),
-                recommendation_mode: asRecord(category).recommendation_mode ?? "profile_fit",
-            }))
+            ? root.recommended_categories.map((category, index) => {
+                const categoryRecord = asRecord(category);
+                const newRecommendations = Array.isArray(categoryRecord.new_recommendations)
+                    ? categoryRecord.new_recommendations
+                    : asArray(categoryRecord.books);
+
+                return {
+                    ...categoryRecord,
+                    rank: categoryRecord.rank ?? index + 1,
+                    fit_score: categoryRecord.fit_score ?? "medium",
+                    recommendation_mode: categoryRecord.recommendation_mode ?? "profile_fit",
+                    priority_reason: categoryRecord.priority_reason ?? categoryRecord.collection_context ?? "Kategori ini dipilih dari sinyal koleksi dan profil yang tersedia.",
+                    related_profile_factors: asArray(categoryRecord.related_profile_factors),
+                    collection_context: categoryRecord.collection_context ?? categoryRecord.priority_reason ?? "Konteks koleksi belum cukup spesifik untuk kategori ini.",
+                    read_from_collection_first: asArray(categoryRecord.read_from_collection_first).map((book, bookIndex) => ({
+                        ...asRecord(book),
+                        reading_order: asRecord(book).reading_order ?? bookIndex + 1,
+                    })),
+                    new_recommendations: newRecommendations.map((book, bookIndex) => ({
+                        ...asRecord(book),
+                        reading_order: asRecord(book).reading_order ?? bookIndex + 1,
+                    })),
+                };
+            })
             : [],
         balancing_suggestions: Array.isArray(root.balancing_suggestions) ? root.balancing_suggestions : [],
         reading_path: Array.isArray(root.reading_path)
@@ -243,6 +231,7 @@ export function normalizeBookRecommendation(input: BookRecommendationInput | unk
     let nextReadingOrder = 1;
 
     const parsed = bookRecommendationSchema.parse(normalizedInput);
+    let trimmedForLimit = false;
 
     const recommended_categories = [...parsed.recommended_categories]
         .sort((a, b) => a.rank - b.rank)
@@ -276,6 +265,7 @@ export function normalizeBookRecommendation(input: BookRecommendationInput | unk
             .find((category) => category.new_recommendations.length > 0 && category.read_from_collection_first.length + category.new_recommendations.length > 1);
         if (categoryWithNewBook) {
             categoryWithNewBook.new_recommendations.pop();
+            trimmedForLimit = true;
             continue;
         }
 
@@ -284,11 +274,38 @@ export function normalizeBookRecommendation(input: BookRecommendationInput | unk
             .find((category) => category.read_from_collection_first.length > 1 && category.read_from_collection_first.length + category.new_recommendations.length > 1);
         if (categoryWithCollectionBook) {
             categoryWithCollectionBook.read_from_collection_first.pop();
+            trimmedForLimit = true;
             continue;
         }
 
         if (recommended_categories.length <= 3) break;
         recommended_categories.pop();
+        trimmedForLimit = true;
+    }
+
+    const warnings = [...parsed.warnings];
+    const totalItems = countRecommendationItems(recommended_categories);
+
+    if (totalItems < 6) {
+        warnings.push("Rekomendasi utama lebih sedikit dari target karena data yang tersedia terbatas.");
+    }
+
+    if (totalItems > 12) {
+        warnings.push("Rekomendasi utama melebihi target, beberapa item tambahan dipangkas agar tampilan tetap ringkas.");
+    }
+
+    if (trimmedForLimit && totalItems <= 12) {
+        warnings.push("Beberapa rekomendasi tambahan dipangkas agar daftar utama tetap ringkas.");
+    }
+
+    if (parsed.collection_analysis.owned_count >= 5) {
+        const hasEarlyBalancingCategory = recommended_categories
+            .slice(0, 2)
+            .some((category) => category.recommendation_mode === "balancing_blind_spot");
+
+        if (hasEarlyBalancingCategory) {
+            warnings.push("Kategori penyeimbang muncul lebih awal karena keluaran AI terbatas; gunakan sebagai pelengkap setelah bacaan utama.");
+        }
     }
 
     const pathCategories = new Set(recommended_categories.map((category) => category.name));
@@ -317,8 +334,12 @@ export function normalizeBookRecommendation(input: BookRecommendationInput | unk
     return bookRecommendationSchema.parse({
         ...parsed,
         recommended_categories,
-        balancing_suggestions: parsed.balancing_suggestions.slice(0, 2),
+        balancing_suggestions: parsed.balancing_suggestions.slice(0, 2).map((suggestion) => ({
+            ...suggestion,
+            books: suggestion.books.slice(0, 3),
+        })),
         reading_path: reading_path.length ? reading_path : fallbackPath,
+        warnings: Array.from(new Set(warnings)),
     });
 }
 
@@ -456,7 +477,7 @@ Aturan ranking wajib:
 - Jangan merekomendasikan buku finished kecuali sebagai catatan reread di warnings.
 - Wishlist memengaruhi ranking, tetapi lebih rendah dari owned, reading, dan finished.
 - Tampilkan hanya 3 sampai 5 recommended_categories.
-- Total rekomendasi utama harus 6 sampai 12 item.
+- Target rekomendasi utama 6 sampai 12 item; jika data terbatas, lebih sedikit boleh asal tetap relevan.
 - balancing_suggestions hanya 0 sampai 2 kategori dan bersifat opsional.
 - collection_analysis.gaps harus berisi area yang belum banyak terwakili, dengan priority "secondary".
 - Jangan gunakan kategori blind spot sebagai rank #1 kecuali collectionPattern sendiri kuat di kategori itu.
@@ -510,8 +531,8 @@ Kategori kandidat:
 ${BOOK_CATEGORY_CANDIDATES.map((category, index) => `${index + 1}. ${category}`).join("\n")}
 
 Aturan wajib:
-- recommended_categories harus berisi 3 sampai 5 kategori.
-- Total rekomendasi utama harus 6 sampai 12 item.
+- recommended_categories idealnya berisi 3 sampai 5 kategori, tetapi jangan mengarang kategori jika data terbatas.
+- Target rekomendasi utama 6 sampai 12 item; jika data terbatas, lebih sedikit boleh asal tetap relevan.
 - Setiap kategori utama harus memiliki minimal satu item di read_from_collection_first atau new_recommendations.
 - recommendation_mode harus salah satu dari similar_to_collection, from_unfinished_collection, profile_fit, balancing_blind_spot.
 - Gunakan read_from_collection_first untuk buku koleksi yang belum selesai.

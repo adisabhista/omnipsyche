@@ -72,6 +72,18 @@ interface BookModuleState {
     message: string;
 }
 
+type BookRecommendationCategory = BookRecommendation["recommended_categories"][number] & {
+    books?: BookRecommendation["recommended_categories"][number]["new_recommendations"];
+};
+type BookRecommendationResponse = {
+    recommendation?: unknown;
+    bookInsight?: {
+        id?: unknown;
+        createdAt?: unknown;
+        model?: unknown;
+    } | null;
+};
+
 const tabs: Array<{ id: TabId; label: string }> = [
     { id: "recommendations", label: "Rekomendasi" },
     { id: "collection", label: "Koleksi Saya" },
@@ -99,13 +111,13 @@ const recommendationModeLabels: Record<BookRecommendation["recommended_categorie
     similar_to_collection: "Mirip dengan Koleksi Anda",
     from_unfinished_collection: "Baca dari Koleksi Anda",
     profile_fit: "Selaras dengan Profil",
-    balancing_blind_spot: "Opsional untuk Memperluas Perspektif",
+    balancing_blind_spot: "Perspektif Tambahan",
 };
 
 const pathSourceLabels: Record<BookRecommendation["reading_path"][number]["source"], string> = {
     collection: "Koleksi",
     new: "Baru",
-    balancing: "Penyeimbang",
+    balancing: "Perspektif Tambahan",
 };
 
 const statusLabels: Record<UserBook["status"], string> = {
@@ -134,7 +146,7 @@ const collectionSortOptions: Array<{ value: CollectionSort; label: string }> = [
 const sourceLabels: Record<BookCandidate["source"], string> = {
     google_books: "Google Books",
     open_library: "Open Library",
-    ai_fallback: "AI Fallback",
+    ai_fallback: "AI fallback",
 };
 
 function excerpt(value?: string | null, maxLength = 180) {
@@ -142,9 +154,74 @@ function excerpt(value?: string | null, maxLength = 180) {
     return value.length > maxLength ? `${value.slice(0, maxLength)}...` : value;
 }
 
+function isRecord(value: unknown): value is Record<string, unknown> {
+    return typeof value === "object" && value !== null;
+}
+
+function asArray<T>(value: unknown): T[] {
+    return Array.isArray(value) ? value as T[] : [];
+}
+
+function asString(value: unknown, fallback = "") {
+    return typeof value === "string" ? value : fallback;
+}
+
+function asNumber(value: unknown, fallback = 0) {
+    return typeof value === "number" && Number.isFinite(value) ? value : fallback;
+}
+
+function normalizeRecommendationForDisplay(value: unknown): BookRecommendation | null {
+    if (!isRecord(value) || typeof value.summary !== "string" || !Array.isArray(value.recommended_categories)) {
+        return null;
+    }
+
+    const collectionAnalysis = isRecord(value.collection_analysis) ? value.collection_analysis : {};
+    const recommendedCategories = value.recommended_categories.map((category, index) => {
+        const categoryRecord = isRecord(category) ? category : {};
+        const newRecommendations = Array.isArray(categoryRecord.new_recommendations)
+            ? categoryRecord.new_recommendations
+            : asArray(categoryRecord.books);
+
+        return {
+            ...categoryRecord,
+            rank: asNumber(categoryRecord.rank, index + 1),
+            name: asString(categoryRecord.name, `Kategori ${index + 1}`),
+            fit_score: asString(categoryRecord.fit_score, "medium"),
+            recommendation_mode: asString(categoryRecord.recommendation_mode, "profile_fit"),
+            priority_reason: asString(categoryRecord.priority_reason, asString(categoryRecord.collection_context, "Kategori ini dipilih dari sinyal koleksi dan profil yang tersedia.")),
+            related_profile_factors: asArray<string>(categoryRecord.related_profile_factors),
+            collection_context: asString(categoryRecord.collection_context, asString(categoryRecord.priority_reason, "Konteks koleksi belum tersedia untuk kategori ini.")),
+            read_from_collection_first: asArray(categoryRecord.read_from_collection_first),
+            new_recommendations: newRecommendations,
+        };
+    });
+
+    return {
+        ...value,
+        summary: value.summary,
+        collection_analysis: {
+            ...collectionAnalysis,
+            owned_count: asNumber(collectionAnalysis.owned_count),
+            unfinished_count: asNumber(collectionAnalysis.unfinished_count),
+            finished_count: asNumber(collectionAnalysis.finished_count),
+            dominant_categories: asArray<string>(collectionAnalysis.dominant_categories),
+            dominant_pattern_summary: asString(collectionAnalysis.dominant_pattern_summary, "Pola koleksi belum cukup spesifik, jadi rekomendasi memakai sinyal profil dan analisis sebagai pendukung."),
+            similarity_priority_note: asString(collectionAnalysis.similarity_priority_note, "Rekomendasi utama diprioritaskan dari kategori yang paling dekat dengan koleksi Anda."),
+            blind_spot_note: asString(collectionAnalysis.blind_spot_note, "Kategori penyeimbang bersifat opsional setelah bacaan utama."),
+            unread_priority_note: asString(collectionAnalysis.unread_priority_note, "Buku yang belum selesai di koleksi diprioritaskan sebelum rekomendasi baru ketika relevan."),
+            gaps: asArray(collectionAnalysis.gaps),
+        },
+        category_ranking_logic: asString(value.category_ranking_logic, "Kategori disusun dari kecocokan profil, pola koleksi, dan prioritas bacaan yang belum selesai."),
+        recommended_categories: recommendedCategories,
+        balancing_suggestions: asArray(value.balancing_suggestions),
+        reading_path: asArray(value.reading_path),
+        warnings: asArray<string>(value.warnings),
+    } as BookRecommendation;
+}
+
 function countRecommendationItems(recommendation: BookRecommendation | null) {
     return recommendation?.recommended_categories.reduce(
-        (total, category) => total + category.read_from_collection_first.length + category.new_recommendations.length,
+        (total, category) => total + (category.read_from_collection_first ?? []).length + (category.new_recommendations ?? []).length,
         0
     ) ?? 0;
 }
@@ -235,10 +312,12 @@ function NewRecommendationCard({
 function CategoryCard({
     category,
 }: {
-    category: BookRecommendation["recommended_categories"][number];
+    category: BookRecommendationCategory;
 }) {
-    const hasCollectionBooks = category.read_from_collection_first.length > 0;
-    const hasNewRecommendations = category.new_recommendations.length > 0;
+    const collectionBooks = category.read_from_collection_first ?? [];
+    const newBooks = category.new_recommendations ?? category.books ?? [];
+    const hasCollectionBooks = collectionBooks.length > 0;
+    const hasNewRecommendations = newBooks.length > 0;
 
     return (
         <SurfaceCard title={`${category.rank}. ${category.name}`}>
@@ -251,9 +330,9 @@ function CategoryCard({
                 </span>
                 <p className="mt-4 text-sm leading-6 text-slate-400">{category.priority_reason}</p>
                 <p className="mt-3 text-sm leading-6 text-slate-500">{category.collection_context}</p>
-                {category.related_profile_factors.length > 0 && (
+                {(category.related_profile_factors ?? []).length > 0 && (
                     <div className="mt-4 flex flex-wrap gap-2">
-                        {category.related_profile_factors.map((factor) => (
+                        {(category.related_profile_factors ?? []).map((factor) => (
                             <span key={factor} className="rounded-full bg-cyan-300/10 px-2 py-1 text-[11px] text-cyan-200">
                                 {factor}
                             </span>
@@ -273,7 +352,7 @@ function CategoryCard({
                             )}
                         </div>
                         <div className="grid gap-4 md:grid-cols-2">
-                            {category.read_from_collection_first.map((book) => (
+                            {collectionBooks.map((book) => (
                                 <CollectionRecommendationCard key={`${category.name}-collection-${book.bookId ?? book.reading_order}`} book={book} />
                             ))}
                         </div>
@@ -291,7 +370,7 @@ function CategoryCard({
                             )}
                         </div>
                         <div className="grid gap-4 md:grid-cols-2">
-                            {category.new_recommendations.map((book) => (
+                            {newBooks.map((book) => (
                                 <NewRecommendationCard key={`${category.name}-new-${book.reading_order}-${book.title}`} book={book} />
                             ))}
                         </div>
@@ -304,6 +383,7 @@ function CategoryCard({
 
 function CollectionPatternOverview({ recommendation }: { recommendation: BookRecommendation }) {
     const analysis = recommendation.collection_analysis;
+    const dominantCategories = analysis.dominant_categories ?? [];
 
     return (
         <SurfaceCard title="Pola Koleksi Anda" eyebrow="Sinyal Utama Rekomendasi">
@@ -312,7 +392,7 @@ function CollectionPatternOverview({ recommendation }: { recommendation: BookRec
                 <div className="rounded-lg border border-white/10 bg-black/25 p-4">
                     <p className="text-xs uppercase tracking-[0.18em] text-slate-500">Kategori Dominan</p>
                     <p className="mt-2 text-sm text-slate-300">
-                        {analysis.dominant_categories.length ? analysis.dominant_categories.join(", ") : "Belum cukup data koleksi."}
+                        {dominantCategories.length ? dominantCategories.join(", ") : "Belum cukup data koleksi."}
                     </p>
                 </div>
                 <div className="rounded-lg border border-white/10 bg-black/25 p-4">
@@ -335,13 +415,13 @@ function CollectionPatternOverview({ recommendation }: { recommendation: BookRec
 }
 
 function BalancingSuggestions({ recommendation }: { recommendation: BookRecommendation }) {
-    const suggestions = recommendation.balancing_suggestions;
-    const gaps = recommendation.collection_analysis.gaps;
+    const suggestions = recommendation.balancing_suggestions ?? [];
+    const gaps = recommendation.collection_analysis.gaps ?? [];
 
     if (suggestions.length === 0 && gaps.length === 0) return null;
 
     return (
-        <SurfaceCard title="Kategori Pelengkap" eyebrow="Opsional untuk Memperluas Perspektif">
+        <SurfaceCard title="Perspektif Tambahan" eyebrow="Opsional">
             <p className="text-sm leading-6 text-slate-400">{recommendation.collection_analysis.blind_spot_note}</p>
             {suggestions.length > 0 && (
                 <div className="mt-5 grid gap-4">
@@ -354,9 +434,9 @@ function BalancingSuggestions({ recommendation }: { recommendation: BookRecommen
                                 </span>
                             </div>
                             <p className="mt-2 text-sm leading-6 text-slate-500">{suggestion.reason}</p>
-                            {suggestion.books.length > 0 && (
+                            {(suggestion.books ?? []).length > 0 && (
                                 <div className="mt-4 grid gap-3 md:grid-cols-2">
-                                    {suggestion.books.map((book) => (
+                                    {(suggestion.books ?? []).map((book) => (
                                         <div key={`${suggestion.category}-${book.title}`} className="rounded-lg border border-white/10 bg-black/20 p-3">
                                             <p className="font-medium text-slate-200">{book.title}</p>
                                             <p className="mt-1 text-sm text-slate-400">{book.author}</p>
@@ -384,10 +464,14 @@ function BalancingSuggestions({ recommendation }: { recommendation: BookRecommen
 }
 
 function ReadingPathCard({ recommendation }: { recommendation: BookRecommendation }) {
+    const readingPath = recommendation.reading_path ?? [];
+
+    if (readingPath.length === 0) return null;
+
     return (
         <SurfaceCard title="Jalur Baca" eyebrow="Urutan yang Disarankan">
             <div className="space-y-4">
-                {recommendation.reading_path.map((step) => (
+                {readingPath.map((step) => (
                     <article key={`${step.step}-${step.category}-${step.title}`} className="rounded-lg border border-white/10 bg-black/25 p-4">
                         <div className="flex flex-wrap items-center gap-3">
                             <span className="flex h-8 w-8 items-center justify-center rounded-full bg-cyan-300 text-sm font-semibold text-slate-950">
@@ -416,6 +500,7 @@ export default function BukuPage() {
     const [title, setTitle] = useState("");
     const [author, setAuthor] = useState("");
     const [candidates, setCandidates] = useState<BookCandidate[]>([]);
+    const [lookupCompleted, setLookupCompleted] = useState(false);
     const [loading, setLoading] = useState(true);
     const [searching, setSearching] = useState(false);
     const [saving, setSaving] = useState(false);
@@ -495,8 +580,10 @@ export default function BukuPage() {
         setQualityWarnings((data.warnings ?? []).filter((warning: ProfileQualityWarning) => warning.area === "books"));
     }, []);
 
-    const loadBookState = useCallback(async () => {
-        setLoading(true);
+    const loadBookState = useCallback(async ({ showLoading = true }: { showLoading?: boolean } = {}) => {
+        if (showLoading) {
+            setLoading(true);
+        }
         setError(null);
         setCollectionError(null);
 
@@ -528,7 +615,9 @@ export default function BukuPage() {
         try {
             await Promise.allSettled([stateRequest, collectionRequest, qualityRequest]);
         } finally {
-            setLoading(false);
+            if (showLoading) {
+                setLoading(false);
+            }
         }
     }, [loadCollection, loadQuality]);
 
@@ -548,6 +637,8 @@ export default function BukuPage() {
             setSearching(true);
             setMessage(null);
             setError(null);
+            setLookupCompleted(false);
+            setCandidates([]);
 
             const response = await fetch("/api/books/lookup", {
                 method: "POST",
@@ -561,9 +652,11 @@ export default function BukuPage() {
             }
 
             setCandidates(data.candidates ?? []);
+            setLookupCompleted(true);
         } catch (searchError) {
             console.error("Book lookup request failed:", searchError);
             setError(searchError instanceof Error ? searchError.message : "Gagal mencari metadata buku.");
+            setLookupCompleted(false);
         } finally {
             setSearching(false);
         }
@@ -645,21 +738,51 @@ export default function BukuPage() {
             setMessage(null);
 
             const response = await fetch("/api/books/recommend", { method: "POST" });
-            const data = await response.json();
+            const data = await response.json() as BookRecommendationResponse | unknown;
 
-            if (!response.ok) {
-                throw new Error(data?.error || "Rekomendasi buku gagal dibuat.");
+            if (process.env.NODE_ENV === "development") {
+                console.log("Book recommendation response:", data);
+                console.log("Current moduleState before update:", moduleState);
             }
 
-            setModuleState((current) => current ? {
+            if (!response.ok) {
+                throw new Error(isRecord(data) && typeof data.error === "string" ? data.error : "Rekomendasi buku gagal dibuat.");
+            }
+
+            const responseRecord = isRecord(data) ? data : {};
+            const rawRecommendation = "recommendation" in responseRecord ? responseRecord.recommendation : data;
+            const bookInsight = isRecord(responseRecord.bookInsight) ? responseRecord.bookInsight : null;
+            const normalizedRecommendation = normalizeRecommendationForDisplay(rawRecommendation);
+
+            if (!normalizedRecommendation) {
+                if (process.env.NODE_ENV === "development") {
+                    console.warn("Unrecognized book recommendation response shape:", data);
+                }
+                setError("Format rekomendasi tidak dikenali.");
+                return;
+            }
+
+            const recommendationItemCount = countRecommendationItems(normalizedRecommendation);
+
+            setModuleState((current) => ({
+                profile: current?.profile ?? null,
+                latestAnalysis: current?.latestAnalysis ?? null,
+                canRecommend: current?.canRecommend ?? true,
+                emptyState: current?.emptyState ?? "ready",
+                message: current?.message ?? "Rekomendasi buku siap dibuat.",
                 ...current,
                 latestBookInsight: {
-                    id: "latest",
-                    createdAt: new Date().toISOString(),
-                    model: null,
-                    recommendation: data,
+                    id: asString(bookInsight?.id, current?.latestBookInsight?.id ?? "local-generated"),
+                    createdAt: asString(bookInsight?.createdAt, new Date().toISOString()),
+                    model: typeof bookInsight?.model === "string" ? bookInsight.model : current?.latestBookInsight?.model ?? null,
+                    recommendation: normalizedRecommendation,
                 },
-            } : current);
+            }));
+            setActiveTab("recommendations");
+            setMessage(recommendationItemCount > 0
+                ? "Rekomendasi buku berhasil dibuat."
+                : "Rekomendasi berhasil dibuat, tetapi hasilnya masih kosong. Coba lengkapi koleksi atau profil.");
+            await loadBookState({ showLoading: false });
         } catch (generateError) {
             console.error("Book recommendation request failed:", generateError);
             setError(generateError instanceof Error ? generateError.message : "Rekomendasi buku gagal dibuat.");
@@ -785,6 +908,16 @@ export default function BukuPage() {
                             <>
                                 <SurfaceCard title="Ringkasan">
                                     <p className="text-sm leading-6 text-slate-400">{recommendation.summary}</p>
+                                    {recommendation.warnings.length > 0 && (
+                                        <div className="mt-5 rounded-lg border border-amber-300/20 bg-amber-300/10 p-4">
+                                            <p className="text-xs uppercase tracking-[0.18em] text-amber-200">Catatan Rekomendasi</p>
+                                            <ul className="mt-3 space-y-2 text-sm leading-6 text-amber-100">
+                                                {recommendation.warnings.map((warning) => (
+                                                    <li key={warning}>{warning}</li>
+                                                ))}
+                                            </ul>
+                                        </div>
+                                    )}
                                     <div className="mt-5 rounded-lg border border-white/10 bg-black/25 p-4">
                                         <p className="text-xs uppercase tracking-[0.18em] text-slate-500">Logika Ranking Kategori</p>
                                         <p className="mt-2 text-sm leading-6 text-slate-400">{recommendation.category_ranking_logic}</p>
@@ -812,7 +945,11 @@ export default function BukuPage() {
                                     <span className="text-sm text-slate-400">Judul buku</span>
                                     <input
                                         value={title}
-                                        onChange={(event) => setTitle(event.target.value)}
+                                        onChange={(event) => {
+                                            setTitle(event.target.value);
+                                            setLookupCompleted(false);
+                                            setCandidates([]);
+                                        }}
                                         className="mt-2 w-full rounded-lg border border-white/10 bg-black/30 px-3 py-2 text-sm text-slate-100 outline-none focus:border-cyan-300/60"
                                         placeholder="Judul buku"
                                     />
@@ -821,7 +958,11 @@ export default function BukuPage() {
                                     <span className="text-sm text-slate-400">Penulis</span>
                                     <input
                                         value={author}
-                                        onChange={(event) => setAuthor(event.target.value)}
+                                        onChange={(event) => {
+                                            setAuthor(event.target.value);
+                                            setLookupCompleted(false);
+                                            setCandidates([]);
+                                        }}
                                         className="mt-2 w-full rounded-lg border border-white/10 bg-black/30 px-3 py-2 text-sm text-slate-100 outline-none focus:border-cyan-300/60"
                                         placeholder="Opsional"
                                     />
@@ -859,6 +1000,11 @@ export default function BukuPage() {
                                                 {candidate.description && (
                                                     <p className="mt-2 text-sm leading-6 text-slate-500">{excerpt(candidate.description)}</p>
                                                 )}
+                                                {candidate.source === "ai_fallback" && (
+                                                    <p className="mt-2 text-sm leading-6 text-amber-200">
+                                                        Metadata lengkap belum ditemukan, data ini hanya normalisasi judul/penulis.
+                                                    </p>
+                                                )}
                                                 <button
                                                     onClick={() => addBook(candidate)}
                                                     disabled={saving}
@@ -869,6 +1015,16 @@ export default function BukuPage() {
                                             </div>
                                         </article>
                                     ))}
+                                </div>
+                            </SurfaceCard>
+                        )}
+
+                        {lookupCompleted && candidates.length === 0 && (
+                            <SurfaceCard title="Buku Tidak Ditemukan">
+                                <div className="py-6">
+                                    <p className="text-sm leading-6 text-slate-400">
+                                        Buku tidak ditemukan. Coba isi judul dan penulis lebih spesifik, atau tambahkan manual.
+                                    </p>
                                 </div>
                             </SurfaceCard>
                         )}
@@ -1012,7 +1168,7 @@ export default function BukuPage() {
                                     </div>
                                 </div>
                             </SurfaceCard>
-                            <SurfaceCard title="Kategori Pelengkap" eyebrow="Opsional untuk Memperluas Perspektif">
+                            <SurfaceCard title="Perspektif Tambahan" eyebrow="Opsional">
                                 <p className="mb-5 text-sm leading-6 text-slate-400">{recommendation.collection_analysis.blind_spot_note}</p>
                                 <div className="grid gap-4">
                                     {recommendation.collection_analysis.gaps.map((gap) => (
@@ -1070,7 +1226,7 @@ export default function BukuPage() {
                 </SurfaceCard>
                 <SurfaceCard title="Prinsip Kurasi">
                     <p className="text-sm leading-6 text-slate-500">
-                        Rekomendasi membaca pola koleksi terlebih dahulu. Buku yang belum selesai dan kategori yang mirip koleksi diprioritaskan sebelum kategori penyeimbang.
+                        Rekomendasi membaca pola koleksi terlebih dahulu. Buku yang belum selesai dan kategori yang mirip koleksi diprioritaskan sebelum perspektif tambahan.
                     </p>
                 </SurfaceCard>
             </RightRail>

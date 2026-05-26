@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { ModuleCard, MetricCard, RightRail, StatusList, SurfaceCard } from "@/components/PlatformCards";
+import { OnboardingProgressCard } from "@/components/dashboard/OnboardingProgressCard";
 import { getDashboardData } from "@/lib/dashboard-data";
 import { createExcerpt } from "@/lib/analysis-format";
 
@@ -38,8 +39,8 @@ export default async function Home() {
             status: data.isAuthenticated ? (data.analysisCount > 0 ? "Tersimpan" : "Siap") : "Siap" 
         },
         {
-            title: "Validasi Profil",
-            description: "Validasi indikatif untuk melihat keselarasan profil dengan data pendukung.",
+            title: "Konsistensi Profil",
+            description: "Pemeriksaan indikatif untuk melihat keselarasan profil dengan data pendukung.",
             status: data.isAuthenticated ? (data.latestProfileValidation ? "Tersimpan" : "Siap") : "Siap",
         },
         { title: "Karier", description: "Pemetaan profil menjadi lingkungan kerja, peran, dan rekomendasi pengembangan.", status: "Baru" },
@@ -48,7 +49,7 @@ export default async function Home() {
     ];
 
     // Build dynamic next steps
-    const nextSteps = [];
+    const nextSteps: Array<{ label: string; value: string; variant?: "warning" | "success" | "muted" }> = [];
     if (data.isAuthenticated) {
         if (!data.latestProfile) {
             nextSteps.push({ label: "Bangun Profil", value: "Perlu Diisi" });
@@ -61,9 +62,14 @@ export default async function Home() {
             }
         }
         if (data.analysisCount === 0) {
-            nextSteps.push({ label: "Sintesis AI Pertama", value: "Siap Dibuat" });
+            nextSteps.push({ label: "Analisis AI Pertama", value: "Siap Dibuat" });
         } else {
             nextSteps.push({ label: "Analisis AI Terbaru", value: "Selesai" });
+            nextSteps.push({
+                label: "Konsistensi Profil",
+                value: data.latestProfileValidation ? "Selesai" : "Siap Dicek",
+                variant: data.latestProfileValidation ? "success" : "warning",
+            });
         }
     } else {
         // Logged out static steps
@@ -83,7 +89,7 @@ export default async function Home() {
                         <div>
                             <h2 className="text-3xl font-semibold tracking-tight text-white md:text-5xl">Profil Gabungan sebagai pusat semua wawasan.</h2>
                             <p className="mt-4 max-w-2xl text-sm leading-7 text-slate-400 md:text-base">
-                                OmniPsyche menghubungkan tipologi, narasi diri, analisis AI, karier, buku, dan riwayat menjadi satu platform yang bisa terus diperluas.
+                                Mulai dari profil dasar, lalu gunakan analisis dan konsistensi untuk mendapatkan rekomendasi yang lebih personal.
                             </p>
                             <div className="mt-6 flex flex-wrap gap-3">
                                 {data.isAuthenticated ? (
@@ -143,6 +149,8 @@ export default async function Home() {
                         </div>
                     </div>
                 </section>
+
+                <OnboardingProgressCard data={data} />
 
                 {data.isAuthenticated ? (
                     <>
@@ -218,17 +226,17 @@ export default async function Home() {
                                         ]}
                                     />
                                     <p className="mt-4 text-sm leading-6 text-slate-500">
-                                        Validasi terakhir dibuat pada {new Date(data.latestProfileValidation.createdAt).toLocaleDateString("id-ID", { day: "numeric", month: "long", year: "numeric" })}.
+                                        Pemeriksaan terakhir dibuat pada {new Date(data.latestProfileValidation.createdAt).toLocaleDateString("id-ID", { day: "numeric", month: "long", year: "numeric" })}.
                                     </p>
                                     <Link href="/validasi-profil" className="mt-4 inline-flex rounded-lg border border-white/10 px-3 py-2 text-sm font-semibold text-slate-200 hover:bg-white/5">
-                                        Lihat Validasi
+                                        Lihat Konsistensi
                                     </Link>
                                 </>
                             ) : (
                                 <>
-                                    <p className="text-sm leading-6 text-slate-500">Belum ada validasi profil.</p>
+                                    <p className="text-sm leading-6 text-slate-500">Belum ada pemeriksaan konsistensi profil.</p>
                                     <Link href="/validasi-profil" className="mt-4 inline-flex rounded-lg border border-white/10 px-3 py-2 text-sm font-semibold text-slate-200 hover:bg-white/5">
-                                        Validasi Profil
+                                        Cek Konsistensi
                                     </Link>
                                 </>
                             )}

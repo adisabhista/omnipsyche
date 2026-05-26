@@ -8,13 +8,13 @@ Evaluasi apakah profil kepribadian pengguna tampak konsisten dengan data penduku
 
 Penting:
 Kamu tidak boleh menyatakan bahwa tipe pengguna pasti benar atau pasti salah.
-Kamu hanya boleh menilai indikasi konsistensi, potensi mistype, dan area yang perlu divalidasi ulang.
+Kamu hanya boleh menilai indikasi konsistensi, potensi mistype, dan area yang perlu ditinjau ulang.
 
 Gunakan bahasa hati-hati:
 - "mengindikasikan"
 - "cenderung mendukung"
 - "kurang selaras"
-- "perlu divalidasi ulang"
+- "perlu ditinjau ulang"
 - "data belum cukup"
 - "kemungkinan"
 
@@ -57,7 +57,7 @@ Evidence weighting guidance:
 
 Output JSON wajib:
 {
-  "summary": "ringkasan hasil validasi",
+  "summary": "ringkasan hasil pemeriksaan konsistensi",
   "profile_consistency_score": 0,
   "mistype_risk": "low | medium | high",
   "confidence": "low | medium | high",
@@ -106,7 +106,7 @@ Output JSON wajib:
   ],
   "validation_questions": [
     {
-      "question": "pertanyaan validasi untuk pengguna",
+      "question": "pertanyaan refleksi untuk pengguna",
       "purpose": "tujuan pertanyaan",
       "related_framework": "framework terkait"
     }
