@@ -16,9 +16,47 @@ import { generatePersonalitySynthesis, getConfiguredVertexModel } from "@/lib/ve
 const NO_PROFILE_MESSAGE = "Bangun profil terlebih dahulu untuk mendapatkan rekomendasi buku.";
 const NO_ANALYSIS_MESSAGE = "Buat analisis terlebih dahulu agar rekomendasi buku lebih personal.";
 const INVALID_RECOMMENDATION_MESSAGE = "Gagal membuat rekomendasi buku yang valid.";
+const SAVE_RECOMMENDATION_MESSAGE = "Gagal menyimpan rekomendasi buku.";
 
 function parseBookRecommendation(text: string) {
     return normalizeBookRecommendation(cleanAndParseJSON(text));
+}
+
+async function saveBookInsight({
+    userId,
+    profileId,
+    analysisId,
+    recommendation,
+    model,
+}: {
+    userId: string;
+    profileId: string;
+    analysisId: string;
+    recommendation: unknown;
+    model: string;
+}) {
+    try {
+        const bookInsight = await prisma.bookInsight.create({
+            data: {
+                profileId,
+                analysisId,
+                content: recommendation as Prisma.InputJsonValue,
+                model,
+            },
+        });
+
+        console.log("BookInsight saved:", {
+            id: bookInsight.id,
+            userId,
+            profileId,
+            createdAt: bookInsight.createdAt,
+        });
+
+        return bookInsight;
+    } catch (error) {
+        console.error("BookInsight save failed:", error);
+        throw new Error(SAVE_RECOMMENDATION_MESSAGE);
+    }
 }
 
 export async function GET() {
@@ -53,13 +91,7 @@ export async function GET() {
         }
 
         const latestInsight = await prisma.bookInsight.findFirst({
-            where: {
-                profileId: profile.id,
-                OR: [
-                    { analysisId: analysis.id },
-                    { analysisId: null },
-                ],
-            },
+            where: { profileId: profile.id },
             orderBy: { createdAt: "desc" },
         });
         const recommendation = latestInsight
@@ -154,18 +186,27 @@ export async function POST() {
             rawResponse = await generatePersonalitySynthesis(prompt);
             const parsed = parseBookRecommendation(rawResponse);
             const model = getConfiguredVertexModel();
-
-            await prisma.bookInsight.create({
-                data: {
-                    profileId: profile.id,
-                    analysisId: analysis.id,
-                    content: parsed as unknown as Prisma.InputJsonValue,
-                    model,
-                },
+            const bookInsight = await saveBookInsight({
+                userId: authResult.userId,
+                profileId: profile.id,
+                analysisId: analysis.id,
+                recommendation: parsed,
+                model,
             });
 
-            return NextResponse.json(parsed);
+            return NextResponse.json({
+                recommendation: parsed,
+                bookInsight: {
+                    id: bookInsight.id,
+                    createdAt: bookInsight.createdAt,
+                    model: bookInsight.model,
+                },
+            });
         } catch (firstError) {
+            if (firstError instanceof Error && firstError.message === SAVE_RECOMMENDATION_MESSAGE) {
+                throw firstError;
+            }
+
             console.warn("Book recommendation validation failed, attempting repair:", firstError);
             const validationMessage = firstError instanceof Error ? firstError.message : String(firstError);
             const repairResponse = await generatePersonalitySynthesis(
@@ -173,22 +214,27 @@ export async function POST() {
             );
             const repaired = parseBookRecommendation(repairResponse);
             const model = getConfiguredVertexModel();
-
-            await prisma.bookInsight.create({
-                data: {
-                    profileId: profile.id,
-                    analysisId: analysis.id,
-                    content: repaired as unknown as Prisma.InputJsonValue,
-                    model,
-                },
+            const bookInsight = await saveBookInsight({
+                userId: authResult.userId,
+                profileId: profile.id,
+                analysisId: analysis.id,
+                recommendation: repaired,
+                model,
             });
 
-            return NextResponse.json(repaired);
+            return NextResponse.json({
+                recommendation: repaired,
+                bookInsight: {
+                    id: bookInsight.id,
+                    createdAt: bookInsight.createdAt,
+                    model: bookInsight.model,
+                },
+            });
         }
     } catch (error) {
         console.error("Book recommendation failed:", error);
         return NextResponse.json(
-            { error: INVALID_RECOMMENDATION_MESSAGE },
+            { error: error instanceof Error && error.message === SAVE_RECOMMENDATION_MESSAGE ? SAVE_RECOMMENDATION_MESSAGE : INVALID_RECOMMENDATION_MESSAGE },
             { status: 500 }
         );
     }

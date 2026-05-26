@@ -3,6 +3,7 @@ import "server-only";
 import type { Prisma } from "@prisma/client";
 import { cleanAndParseJSON } from "@/lib/personality-parser";
 import { prisma } from "@/lib/prisma";
+import { detectCareerEvidence } from "@/lib/profile-evidence-sources";
 import { buildProfileValidationPrompt, buildProfileValidationRepairPrompt } from "@/lib/profile-validation-prompt";
 import { profileValidationSchema, type ProfileValidationResult } from "@/lib/profile-validation-schema";
 import { generateProfileValidation } from "@/lib/vertex-ai";
@@ -137,10 +138,55 @@ function isLimitedData(input: ProfileValidationInput) {
     };
 }
 
+function getLiveDataQuality(input: ProfileValidationInput): ProfileValidationResult["data_quality"] {
+    const finishedBooks = input.book_collection.filter((book) => book.status === "finished").length;
+    const unfinishedBooks = input.book_collection.length - finishedBooks;
+    const careerEvidence = detectCareerEvidence({
+        settings: input.settings_data,
+        profile: input.profile_data,
+        careerInsight: input.latest_career_insight,
+    });
+
+    return {
+        profile_available: true,
+        analysis_available: !!input.analysis_data,
+        settings_available: hasMeaningfulSettings(input.settings_data),
+        book_collection_count: input.book_collection.length,
+        finished_books_count: finishedBooks,
+        unfinished_books_count: unfinishedBooks,
+        career_data_available: careerEvidence.available,
+        narrative_data_available: !!input.latest_narrative_prediction,
+        limitations: [],
+    };
+}
+
+function addBookRecommendationEvidence(result: ProfileValidationResult, input: ProfileValidationInput): ProfileValidationResult["evidence"] {
+    if (!input.latest_book_insight || result.evidence.some((item) => item.source === "book_recommendation")) {
+        return result.evidence;
+    }
+
+    return [
+        ...result.evidence,
+        {
+            source: "book_recommendation",
+            observation: "Insight rekomendasi buku terbaru tersedia sebagai konteks tambahan.",
+            supports: [],
+            potential_conflicts: [],
+            weight: "medium",
+        },
+    ];
+}
+
 function normalizeResult(result: ProfileValidationResult, input: ProfileValidationInput): ProfileValidationResult {
     const available = new Set(input.available_frameworks.filter((framework) => framework !== "Analisis AI tersimpan"));
+    const liveDataQuality = getLiveDataQuality(input);
     const normalized = {
         ...result,
+        evidence: addBookRecommendationEvidence(result, input),
+        data_quality: {
+            ...liveDataQuality,
+            limitations: result.data_quality.limitations,
+        },
         framework_assessment: result.framework_assessment.filter((assessment) => available.has(assessment.framework)),
     };
 

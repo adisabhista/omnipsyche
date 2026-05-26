@@ -43,13 +43,7 @@ export async function GET() {
         }
 
         const latestInsight = await prisma.bookInsight.findFirst({
-            where: {
-                profileId: profile.id,
-                OR: [
-                    { analysisId: analysis.id },
-                    { analysisId: null },
-                ],
-            },
+            where: { profileId: profile.id },
             orderBy: { createdAt: "desc" },
         });
         const recommendation = latestInsight

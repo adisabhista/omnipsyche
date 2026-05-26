@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { requireCurrentUserId } from "@/lib/current-user";
+import { getLiveProfileEvidenceSources } from "@/lib/profile-evidence-sources";
 import { generateAndSaveProfileValidation } from "@/lib/profile-validation-service";
 
 export async function POST() {
@@ -13,7 +14,9 @@ export async function POST() {
             return NextResponse.json({ error: result.error }, { status: result.status });
         }
 
-        return NextResponse.json({ validation: result.validation });
+        const evidenceSources = await getLiveProfileEvidenceSources(authResult.userId);
+
+        return NextResponse.json({ validation: result.validation, evidenceSources });
     } catch (error) {
         console.error("Profile validation generation failed:", error);
         return NextResponse.json(

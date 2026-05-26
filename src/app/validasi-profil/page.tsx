@@ -7,6 +7,7 @@ import { AlertTriangle, CheckCircle2, HelpCircle, Loader2, ShieldCheck, Sparkles
 import { toast } from "sonner";
 import { MetricCard, RightRail, StatusList, SurfaceCard } from "@/components/PlatformCards";
 import { EvidenceSourceCard } from "@/components/profile/EvidenceSourceCard";
+import type { LiveProfileEvidenceSources } from "@/lib/profile-evidence-sources";
 import type { ProfileValidationResult } from "@/lib/profile-validation-schema";
 
 type StoredValidation = {
@@ -69,6 +70,7 @@ function toneClass(value: string | null | undefined) {
 export default function ValidasiProfilPage() {
     const { status } = useSession();
     const [validation, setValidation] = useState<StoredValidation | null>(null);
+    const [evidenceSources, setEvidenceSources] = useState<LiveProfileEvidenceSources | null>(null);
     const [hasProfile, setHasProfile] = useState(false);
     const [loading, setLoading] = useState(true);
     const [generating, setGenerating] = useState(false);
@@ -94,6 +96,7 @@ export default function ValidasiProfilPage() {
             }
 
             setValidation(validationData.validation ?? null);
+            setEvidenceSources(validationData.evidenceSources ?? null);
             setHasProfile(!!profileData && !profileData.error);
         } catch (fetchError) {
             console.error("Profile validation page load failed:", fetchError);
@@ -127,6 +130,7 @@ export default function ValidasiProfilPage() {
             }
 
             setValidation(data.validation);
+            setEvidenceSources(data.evidenceSources ?? null);
             setHasProfile(true);
             toast.success("Konsistensi profil berhasil diperiksa!");
         } catch (generateError) {
@@ -164,6 +168,18 @@ export default function ValidasiProfilPage() {
     }
 
     const result = validation?.result ?? null;
+    const quality = result
+        ? {
+              profileAvailable: evidenceSources?.profileAvailable ?? result.data_quality.profile_available,
+              analysisAvailable: evidenceSources?.analysisAvailable ?? result.data_quality.analysis_available,
+              settingsAvailable: evidenceSources?.settingsAvailable ?? result.data_quality.settings_available,
+              bookCollectionCount: evidenceSources?.bookCollectionCount ?? result.data_quality.book_collection_count,
+              finishedBooksCount: evidenceSources?.finishedBooksCount ?? result.data_quality.finished_books_count,
+              unfinishedBooksCount: evidenceSources?.unfinishedBooksCount ?? result.data_quality.unfinished_books_count,
+              careerDataAvailable: evidenceSources?.careerDataAvailable ?? result.data_quality.career_data_available,
+              narrativeDataAvailable: evidenceSources?.narrativeDataAvailable ?? result.data_quality.narrative_data_available,
+          }
+        : null;
 
     return (
         <div className="grid gap-6 xl:grid-cols-[1fr_320px]">
@@ -233,19 +249,19 @@ export default function ValidasiProfilPage() {
                             <MetricCard label="Tingkat Keyakinan" value={confidenceLabels[result.confidence]} detail="Kekuatan data pendukung saat ini." />
                         </div>
 
-                        <EvidenceSourceCard result={result} />
+                        <EvidenceSourceCard result={result} evidenceSources={evidenceSources} />
 
                         <SurfaceCard title="Kualitas Data">
                             <StatusList
                                 items={[
-                                    { label: "Profil tersedia", value: formatBoolean(result.data_quality.profile_available) },
-                                    { label: "Analisis tersedia", value: formatBoolean(result.data_quality.analysis_available) },
-                                    { label: "Pengaturan tersedia", value: formatBoolean(result.data_quality.settings_available) },
-                                    { label: "Jumlah buku koleksi", value: String(result.data_quality.book_collection_count) },
-                                    { label: "Buku selesai", value: String(result.data_quality.finished_books_count) },
-                                    { label: "Buku belum selesai", value: String(result.data_quality.unfinished_books_count) },
-                                    { label: "Data karier tersedia", value: formatBoolean(result.data_quality.career_data_available) },
-                                    { label: "Data naratif tersedia", value: formatBoolean(result.data_quality.narrative_data_available) },
+                                    { label: "Profil tersedia", value: formatBoolean(quality?.profileAvailable ?? false) },
+                                    { label: "Analisis tersedia", value: formatBoolean(quality?.analysisAvailable ?? false) },
+                                    { label: "Pengaturan tersedia", value: formatBoolean(quality?.settingsAvailable ?? false) },
+                                    { label: "Jumlah buku koleksi", value: String(quality?.bookCollectionCount ?? 0) },
+                                    { label: "Buku selesai", value: String(quality?.finishedBooksCount ?? 0) },
+                                    { label: "Buku belum selesai", value: String(quality?.unfinishedBooksCount ?? 0) },
+                                    { label: "Data karier tersedia", value: formatBoolean(quality?.careerDataAvailable ?? false) },
+                                    { label: "Data naratif tersedia", value: formatBoolean(quality?.narrativeDataAvailable ?? false) },
                                 ]}
                             />
                             {result.data_quality.limitations.length > 0 && (
