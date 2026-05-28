@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { getValidationError } from "@/lib/api-validation";
+import { generateTextWithFallback, isAiGenerationError } from "@/lib/ai-generate";
 import { getLatestUserAnalysis, getLatestUserProfile } from "@/lib/analysis-data";
 import { getCurrentUserId } from "@/lib/current-user";
 import { cleanAndParseJSON } from "@/lib/personality-parser";
@@ -12,7 +13,6 @@ import {
     type TipologiExploreRequest,
     type TipologiExploreResponse,
 } from "@/lib/tipologi-explore-schema";
-import { generateTipologiExploration } from "@/lib/vertex-ai";
 
 const INVALID_MESSAGE = "Eksplorasi tipe gagal dibuat.";
 const BANNED_PHRASES = [
@@ -107,20 +107,21 @@ async function createExploration(payload: TipologiExploreRequest) {
     let rawResponse = "";
 
     try {
-        rawResponse = await generateTipologiExploration(buildTipologiExplorePrompt({
+        const generationResult = await generateTextWithFallback(buildTipologiExplorePrompt({
             payload,
             profileContext: context.profile,
             analysisContext: context.analysis,
-        }));
+        }), { feature: "tipologi-exploration" });
+        rawResponse = generationResult.text;
         let parsed = parseExploration(rawResponse);
 
         if (countWords(parsed.response) > 120) {
-            const repaired = await generateTipologiExploration(buildTipologiExploreRepairPrompt({
+            const repaired = await generateTextWithFallback(buildTipologiExploreRepairPrompt({
                 payload,
                 validationError: "Field response melebihi 120 kata.",
                 previousResponse: rawResponse,
-            }));
-            parsed = parseExploration(repaired);
+            }), { feature: "tipologi-exploration-repair" });
+            parsed = parseExploration(repaired.text);
         }
 
         return enforceSafety({
@@ -128,13 +129,17 @@ async function createExploration(payload: TipologiExploreRequest) {
             response: trimToWords(parsed.response, 120),
         });
     } catch (firstError) {
+        if (isAiGenerationError(firstError)) {
+            throw firstError;
+        }
+
         const validationMessage = firstError instanceof Error ? firstError.message : String(firstError);
-        const repaired = await generateTipologiExploration(buildTipologiExploreRepairPrompt({
+        const repaired = await generateTextWithFallback(buildTipologiExploreRepairPrompt({
             payload,
             validationError: validationMessage,
             previousResponse: rawResponse,
-        }));
-        const parsed = parseExploration(repaired);
+        }), { feature: "tipologi-exploration-repair" });
+        const parsed = parseExploration(repaired.text);
 
         return enforceSafety({
             ...parsed,
@@ -152,10 +157,12 @@ export async function POST(req: Request) {
         return NextResponse.json(result);
     } catch (error) {
         console.error("Tipologi exploration failed:", error);
-        const message = error instanceof SyntaxError
+        const message = isAiGenerationError(error)
+            ? error.publicMessage
+            : error instanceof SyntaxError
             ? "Data permintaan eksplorasi tidak valid."
             : getValidationError(error, error instanceof Error ? error.message : INVALID_MESSAGE);
 
-        return NextResponse.json({ error: message }, { status: 400 });
+        return NextResponse.json({ error: message }, { status: isAiGenerationError(error) ? 500 : 400 });
     }
 }

@@ -2,7 +2,7 @@
 
 ![OmniPsyche Banner](public/banner.jpg)
 
-**OmniPsyche** is an advanced personality synthesis engine that integrates multiple psychological frameworks into a unified, holistic profile. It uses Gemini through **Google Cloud Vertex AI** from server-side Next.js API routes and stores backend test data in PostgreSQL through Prisma.
+**OmniPsyche** is an advanced personality synthesis engine that integrates multiple psychological frameworks into a unified, holistic profile. It uses Gemini from server-side Next.js API routes and stores backend test data in PostgreSQL through Prisma.
 
 ## Key Features
 
@@ -20,20 +20,11 @@
     cd omnipsyche
     ```
 
-2. Enable Vertex AI API in your Google Cloud project.
+2. Create a server-side Gemini API key in Google AI Studio.
 
-3. Install the Google Cloud CLI:
-    https://cloud.google.com/sdk/docs/install
+3. Start PostgreSQL locally and create an `omnipsyche` database.
 
-4. Authenticate local Application Default Credentials:
-    ```bash
-    gcloud auth application-default login
-    gcloud config set project YOUR_PROJECT_ID
-    ```
-
-5. Start PostgreSQL locally and create an `omnipsyche` database.
-
-6. Copy `.env.example` to `.env.local` and set your project ID:
+4. Copy `.env.example` to `.env.local` and set your Gemini API configuration:
     ```bash
     cp .env.example .env.local
     ```
@@ -46,22 +37,18 @@
     NEXTAUTH_SECRET="omnipsyche-local-development-secret-change-me"
     AUTH_SECRET="omnipsyche-local-development-secret-change-me"
 
-    GOOGLE_APPLICATION_CREDENTIALS=""
-    GOOGLE_VERTEX_AI_PROJECT_ID="YOUR_PROJECT_ID"
-    GOOGLE_VERTEX_AI_LOCATION="us-central1"
-    GEMINI_PERSONALITY_MODEL="gemini-2.5-flash"
-
-    GOOGLE_CLOUD_PROJECT=""
-    GOOGLE_CLOUD_LOCATION="us-central1"
-    VERTEX_AI_MODEL="gemini-2.5-flash"
-    GOOGLE_GENAI_USE_VERTEXAI="true"
+    GEMINI_API_KEY="your_api_key"
+    GEMINI_API_PRIMARY_MODEL="gemini-3.5-flash"
+    GEMINI_API_FALLBACK_MODEL="gemini-2.5-flash"
+    ENABLE_AI_MODEL_FALLBACK="true"
+    GEMINI_PERSONALITY_MODEL=""
 
     DEVIL_AI_API_KEY=""
     DEVIL_AI_BASE_URL="https://api.devil.ai/v1"
     DEVIL_AI_LANG="en"
     ```
 
-7. Install dependencies, run the database migration, and start the development server:
+5. Install dependencies, run the database migration, and start the development server:
     ```bash
     npm install
     npx prisma migrate dev --name add_auth
@@ -69,11 +56,24 @@
     npm run dev
     ```
 
-8. Open `http://localhost:3000/register`, create a user, then sign in at `http://localhost:3000/login`.
+6. Open `http://localhost:3000/register`, create a user, then sign in at `http://localhost:3000/login`.
 
-Do not use `GEMINI_API_KEY` or `NEXT_PUBLIC_GEMINI_API_KEY`. OmniPsyche does not require a Gemini API key and does not expose AI credentials to the browser.
+Do not use `NEXT_PUBLIC_` for AI keys. OmniPsyche keeps AI calls and credentials server-side.
 
-Fallback compatibility names are also supported on the server: `GOOGLE_CLOUD_PROJECT`, `GOOGLE_CLOUD_PROJECT_ID`, `GOOGLE_CLOUD_LOCATION`, and `VERTEX_AI_MODEL`.
+`GEMINI_PERSONALITY_MODEL` is still supported as a legacy primary model alias when `GEMINI_API_PRIMARY_MODEL` is not set.
+
+## AI Model Configuration
+
+OmniPsyche now uses Gemini API key authentication, not Vertex AI. The app tries the primary model first and, when `ENABLE_AI_MODEL_FALLBACK="true"`, automatically uses the fallback model for Gemini model availability or access failures.
+
+```env
+GEMINI_API_KEY="your_api_key"
+GEMINI_API_PRIMARY_MODEL="gemini-3.5-flash"
+GEMINI_API_FALLBACK_MODEL="gemini-2.5-flash"
+ENABLE_AI_MODEL_FALLBACK="true"
+```
+
+Vertex AI environment variables such as `GOOGLE_APPLICATION_CREDENTIALS`, `GOOGLE_CLOUD_PROJECT`, `GOOGLE_VERTEX_AI_PROJECT_ID`, and `GOOGLE_GENAI_USE_VERTEXAI` are no longer required for AI generation. Restart `npm run dev` after changing `.env.local`.
 
 For Devil.ai MBTI tests, keep `DEVIL_AI_API_KEY` server-side only. If Devil.ai Indonesian test questions appear blank, use `DEVIL_AI_LANG="en"` because `lang=id` may have incomplete question translations. Restart the dev server and create a new test link after changing this value; old `test_url` links keep their original language.
 
@@ -100,18 +100,17 @@ npx prisma studio
 
 ## Cloud Run Deployment
 
-For production, deploy OmniPsyche to Cloud Run with a service account.
+For production, deploy OmniPsyche to Cloud Run and provide the Gemini API key as a secret or environment variable.
 
-* Grant the Cloud Run service account the **Vertex AI User** role (`roles/aiplatform.user`).
 * Set these Cloud Run environment variables:
     ```bash
-    GOOGLE_VERTEX_AI_PROJECT_ID=YOUR_PROJECT_ID
-    GOOGLE_VERTEX_AI_LOCATION=us-central1
-    GEMINI_PERSONALITY_MODEL=gemini-2.5-flash
-    GOOGLE_GENAI_USE_VERTEXAI=true
+    GEMINI_API_KEY=YOUR_GEMINI_API_KEY
+    GEMINI_API_PRIMARY_MODEL=gemini-3.5-flash
+    GEMINI_API_FALLBACK_MODEL=gemini-2.5-flash
+    ENABLE_AI_MODEL_FALLBACK=true
     ```
-* Do not store service account JSON in the repository.
-* Do not use API keys for Gemini access.
+* Vertex AI service account JSON and project/region variables are no longer required.
+* Do not expose AI credentials with `NEXT_PUBLIC_` variables.
 
 ## Strict Personality Parsing & Consistency Audit
 
@@ -126,12 +125,12 @@ OmniPsyche implements a deterministic and highly resilient multi-framework perso
 3. **Socionics Independence**: Socionics types (e.g., `ILI`, `LII`) are treated as independent parallel frameworks (Model A with 8 functions) rather than plain MBTI aliases. Output notes explicitly state this distinction.
 4. **RIASEC Strictness**: Holland RIASEC codes (e.g., `IRC`, `ICA`) are **never** inferred from other frameworks. They are only included if the user explicitly provided Holland/RIASEC/career interest codes.
 5. **Attitudinal Psyche Independence**: Attitudinal Psyche types (e.g., `LVFE`, `FLVE`) are analyzed as separate, independent systems and are never framed as "confirming" or "proving" the MBTI.
-6. **JSON-Only Guarantee**: The Vertex AI prompt strictly forbids markdown blocks, backticks, or prefix/suffix commentaries.
+6. **JSON-Only Guarantee**: The Gemini prompt strictly forbids markdown blocks, backticks, or prefix/suffix commentaries.
 
 ### 🔍 JSON Validation & Auto-Repair
 
 - **Zod Schema Validation**: The AI response is parsed and strictly validated against the `personalityAnalysisSchema` defined in `src/lib/personality-json-schema.ts`.
-- **Fail-Safe Repair Retry**: If the initial response violates the schema or is malformed, OmniPsyche automatically triggers a single-retry repair loop, passing the validation errors back to Vertex AI to heal the output.
+- **Fail-Safe Repair Retry**: If the initial response violates the schema or is malformed, OmniPsyche automatically triggers a single-retry repair loop, passing the validation errors back to Gemini to heal the output.
 - **Backward Compatibility**: The validated JSON is dynamically formatted into beautiful, structured markdown using `parsedJsonToMarkdown` before saving to the database's `markdown` field, ensuring the existing UI pages render correctly. Both the markdown and structured `parsedJson` are persisted.
 
 ### 🧪 Running the Parser Tests
@@ -147,7 +146,7 @@ npx tsx src/lib/test-personality.ts
 * **Framework**: Next.js App Router
 * **Database**: PostgreSQL with Prisma ORM
 * **Styling**: Tailwind CSS, Framer Motion
-* **AI Core**: Google Gen AI SDK with Vertex AI mode
+* **AI Core**: Google Gen AI SDK with Gemini API key authentication
 * **Icons**: Lucide React
 
 ---

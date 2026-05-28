@@ -4,7 +4,7 @@ import { prisma } from "@/lib/prisma";
 import { analyzeRequestSchema, getValidationError, isValidationError } from "@/lib/api-validation";
 import { NOT_FOUND_MESSAGE, requireCurrentUserId } from "@/lib/current-user";
 import { profileToCreateInput, storedProfileToUserProfile } from "@/lib/profile-storage";
-import { generatePersonalitySynthesis, getConfiguredVertexModel } from "@/lib/vertex-ai";
+import { generateTextWithFallback, isAiGenerationError, type AiGenerationResult } from "@/lib/ai-generate";
 import { personalityAnalysisSchema, type PersonalityAnalysis } from "@/lib/personality-json-schema";
 import { buildNormalizedInput, cleanAndParseJSON, parsedJsonToMarkdown } from "@/lib/personality-parser";
 import { buildPersonalityPrompt } from "@/lib/personality-prompt";
@@ -31,15 +31,21 @@ export async function POST(req: Request) {
         let rawResponse = "";
         let parsedJson: PersonalityAnalysis | null = null;
         let validationErrorMsg = "";
+        let generationResult: AiGenerationResult | null = null;
 
         try {
-            rawResponse = await generatePersonalitySynthesis(prompt);
+            generationResult = await generateTextWithFallback(prompt, { feature: "analysis" });
+            rawResponse = generationResult.text;
             const parsedObj = cleanAndParseJSON(rawResponse);
             parsedJson = personalityAnalysisSchema.parse(parsedObj);
         } catch (err: unknown) {
+            if (isAiGenerationError(err)) {
+                throw err;
+            }
+
             console.warn("Initial AI response validation failed, attempting repair. Error:", err);
             validationErrorMsg = err instanceof Error ? err.message : String(err);
-            
+
             // Single retry with repair prompt
             const repairPrompt = `Perbaiki output berikut agar menjadi JSON valid sesuai schema. Jangan ubah substansi data.
 
@@ -52,10 +58,14 @@ ${validationErrorMsg}
 JANGAN sertakan tag markdown atau teks apa pun di luar JSON. Kembalikan HANYA JSON valid.`;
 
             try {
-                const repairResponse = await generatePersonalitySynthesis(repairPrompt);
-                const parsedObj = cleanAndParseJSON(repairResponse);
+                generationResult = await generateTextWithFallback(repairPrompt, { feature: "analysis-repair" });
+                const parsedObj = cleanAndParseJSON(generationResult.text);
                 parsedJson = personalityAnalysisSchema.parse(parsedObj);
             } catch (retryErr) {
+                if (isAiGenerationError(retryErr)) {
+                    throw retryErr;
+                }
+
                 console.error("Repair retry failed:", retryErr);
                 throw new Error("Gagal memvalidasi output analisis kepribadian.");
             }
@@ -63,7 +73,11 @@ JANGAN sertakan tag markdown atau teks apa pun di luar JSON. Kembalikan HANYA JS
 
         // Dynamically build backward compatible markdown from the structured JSON
         const markdownText = parsedJsonToMarkdown(parsedJson, storedProfile.name);
-        const model = getConfiguredVertexModel();
+        const model = generationResult?.modelUsed;
+
+        if (!model) {
+            throw new Error("Gagal membaca metadata model AI.");
+        }
 
         const analysis = await prisma.analysisResult.create({
             data: {
@@ -86,7 +100,9 @@ JANGAN sertakan tag markdown atau teks apa pun di luar JSON. Kembalikan HANYA JS
         });
     } catch (error: unknown) {
         console.error("Error analyzing profile:", error);
-        const message = getValidationError(error, "Analisis gagal dibuat.");
+        const message = isAiGenerationError(error)
+            ? error.publicMessage
+            : getValidationError(error, "Analisis gagal dibuat.");
         return NextResponse.json(
             { error: message },
             { status: isValidationError(error) ? 400 : 500 }

@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { getValidationError, narrativeRequestSchema } from "@/lib/api-validation";
+import { isAiGenerationError } from "@/lib/ai-generate";
 import { requireCurrentUserId } from "@/lib/current-user";
 import { createNarrativePrediction } from "@/lib/narrative-prediction";
 
@@ -21,10 +22,12 @@ export async function POST(req: Request) {
         });
     } catch (error) {
         console.error("Narrative prediction failed:", error);
-        const message = error instanceof SyntaxError
+        const message = isAiGenerationError(error)
+            ? error.publicMessage
+            : error instanceof SyntaxError
             ? "Respons narasi dari AI tidak valid."
             : getValidationError(error, error instanceof Error ? error.message : "Prediksi narasi gagal dibuat.");
 
-        return NextResponse.json({ error: message }, { status: 400 });
+        return NextResponse.json({ error: message }, { status: isAiGenerationError(error) ? 500 : 400 });
     }
 }

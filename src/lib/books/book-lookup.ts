@@ -1,8 +1,8 @@
 import "server-only";
 
 import { z } from "zod";
+import { generateTextWithFallback, safeErrorMessage } from "@/lib/ai-generate";
 import { cleanAndParseJSON } from "@/lib/personality-parser";
-import { generatePersonalitySynthesis } from "@/lib/vertex-ai";
 
 export type BookLookupCandidate = {
     title: string;
@@ -218,8 +218,8 @@ Schema:
   ]
 }`;
 
-    const text = await generatePersonalitySynthesis(prompt);
-    const parsed = aiFallbackSchema.parse(cleanAndParseJSON(text));
+    const generationResult = await generateTextWithFallback(prompt, { feature: "book-metadata-fallback" });
+    const parsed = aiFallbackSchema.parse(cleanAndParseJSON(generationResult.text));
 
     return parsed.candidates.map((candidate) => ({
         title: candidate.title,
@@ -263,7 +263,7 @@ export async function lookupBookMetadata(input: { title: string; author?: string
     try {
         aiFallbackCandidates = await lookupAiFallback(input.title, input.author);
     } catch (error) {
-        console.warn("AI book lookup fallback failed:", error);
+        console.warn("AI book lookup fallback failed:", safeErrorMessage(error));
     }
 
     return dedupeCandidates(aiFallbackCandidates).slice(0, 3);

@@ -1,5 +1,5 @@
 import { prisma } from "@/lib/prisma";
-import { generateNarrativePrediction, getConfiguredVertexModel } from "@/lib/vertex-ai";
+import { generateTextWithFallback } from "@/lib/ai-generate";
 
 export async function createNarrativePrediction(text: string, userId: string, profileId?: string) {
     if (profileId) {
@@ -40,16 +40,16 @@ export async function createNarrativePrediction(text: string, userId: string, pr
       "${text}"
     `;
 
-    const jsonString = (await generateNarrativePrediction(prompt)).replace(/```json/g, "").replace(/```/g, "").trim();
+    const generationResult = await generateTextWithFallback(prompt, { feature: "narrative-prediction" });
+    const jsonString = generationResult.text.replace(/```json/g, "").replace(/```/g, "").trim();
     const prediction = JSON.parse(jsonString);
-    const model = getConfiguredVertexModel();
     const saved = await prisma.narrativePrediction.create({
         data: {
             userId,
             profileId,
             inputText: text,
             prediction,
-            model,
+            model: generationResult.modelUsed,
         },
     });
 
@@ -57,7 +57,7 @@ export async function createNarrativePrediction(text: string, userId: string, pr
         prediction,
         narrativePredictionId: saved.id,
         profileId: saved.profileId,
-        model,
+        model: generationResult.modelUsed,
         createdAt: saved.createdAt,
     };
 }

@@ -6,7 +6,7 @@ import { prisma } from "@/lib/prisma";
 import { detectCareerEvidence } from "@/lib/profile-evidence-sources";
 import { buildProfileValidationPrompt, buildProfileValidationRepairPrompt } from "@/lib/profile-validation-prompt";
 import { profileValidationSchema, type ProfileValidationResult } from "@/lib/profile-validation-schema";
-import { generateProfileValidation } from "@/lib/vertex-ai";
+import { generateTextWithFallback, isAiGenerationError } from "@/lib/ai-generate";
 
 export const NO_PROFILE_VALIDATION_MESSAGE = "Bangun profil terlebih dahulu sebelum memeriksa konsistensi.";
 export const INVALID_PROFILE_VALIDATION_MESSAGE = "Gagal memeriksa konsistensi profil.";
@@ -361,17 +361,27 @@ export async function generateAndSaveProfileValidation(userId: string) {
     let parsed: ProfileValidationResult;
 
     try {
-        rawResponse = await generateProfileValidation(buildProfileValidationPrompt(input));
+        const generationResult = await generateTextWithFallback(buildProfileValidationPrompt(input), { feature: "profile-validation" });
+        rawResponse = generationResult.text;
         parsed = parseProfileValidation(rawResponse, input);
     } catch (firstError) {
+        if (isAiGenerationError(firstError)) {
+            return { error: firstError.publicMessage, status: 500 as const };
+        }
+
         const validationMessage = firstError instanceof Error ? firstError.message : String(firstError);
 
         try {
-            const repaired = await generateProfileValidation(
-                buildProfileValidationRepairPrompt(rawResponse, validationMessage)
+            const repaired = await generateTextWithFallback(
+                buildProfileValidationRepairPrompt(rawResponse, validationMessage),
+                { feature: "profile-validation-repair" }
             );
-            parsed = parseProfileValidation(repaired, input);
-        } catch {
+            parsed = parseProfileValidation(repaired.text, input);
+        } catch (repairError) {
+            if (isAiGenerationError(repairError)) {
+                return { error: repairError.publicMessage, status: 500 as const };
+            }
+
             return { error: INVALID_PROFILE_VALIDATION_MESSAGE, status: 500 as const };
         }
     }

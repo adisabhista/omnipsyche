@@ -11,7 +11,7 @@ import { analyzeCollectionPattern } from "@/lib/books/collection-pattern";
 import { requireCurrentUserId } from "@/lib/current-user";
 import { cleanAndParseJSON } from "@/lib/personality-parser";
 import { prisma } from "@/lib/prisma";
-import { generatePersonalitySynthesis, getConfiguredVertexModel } from "@/lib/vertex-ai";
+import { generateTextWithFallback, isAiGenerationError } from "@/lib/ai-generate";
 
 const NO_PROFILE_MESSAGE = "Bangun profil terlebih dahulu untuk mendapatkan rekomendasi buku.";
 const NO_ANALYSIS_MESSAGE = "Buat analisis terlebih dahulu agar rekomendasi buku lebih personal.";
@@ -183,15 +183,15 @@ export async function POST() {
         let rawResponse = "";
 
         try {
-            rawResponse = await generatePersonalitySynthesis(prompt);
+            const generationResult = await generateTextWithFallback(prompt, { feature: "book-recommendation" });
+            rawResponse = generationResult.text;
             const parsed = parseBookRecommendation(rawResponse);
-            const model = getConfiguredVertexModel();
             const bookInsight = await saveBookInsight({
                 userId: authResult.userId,
                 profileId: profile.id,
                 analysisId: analysis.id,
                 recommendation: parsed,
-                model,
+                model: generationResult.modelUsed,
             });
 
             return NextResponse.json({
@@ -207,19 +207,23 @@ export async function POST() {
                 throw firstError;
             }
 
+            if (isAiGenerationError(firstError)) {
+                throw firstError;
+            }
+
             console.warn("Book recommendation validation failed, attempting repair:", firstError);
             const validationMessage = firstError instanceof Error ? firstError.message : String(firstError);
-            const repairResponse = await generatePersonalitySynthesis(
-                buildBookRecommendationRepairPrompt(rawResponse, validationMessage)
+            const repairResult = await generateTextWithFallback(
+                buildBookRecommendationRepairPrompt(rawResponse, validationMessage),
+                { feature: "book-recommendation-repair" }
             );
-            const repaired = parseBookRecommendation(repairResponse);
-            const model = getConfiguredVertexModel();
+            const repaired = parseBookRecommendation(repairResult.text);
             const bookInsight = await saveBookInsight({
                 userId: authResult.userId,
                 profileId: profile.id,
                 analysisId: analysis.id,
                 recommendation: repaired,
-                model,
+                model: repairResult.modelUsed,
             });
 
             return NextResponse.json({
@@ -234,7 +238,13 @@ export async function POST() {
     } catch (error) {
         console.error("Book recommendation failed:", error);
         return NextResponse.json(
-            { error: error instanceof Error && error.message === SAVE_RECOMMENDATION_MESSAGE ? SAVE_RECOMMENDATION_MESSAGE : INVALID_RECOMMENDATION_MESSAGE },
+            {
+                error: isAiGenerationError(error)
+                    ? error.publicMessage
+                    : error instanceof Error && error.message === SAVE_RECOMMENDATION_MESSAGE
+                        ? SAVE_RECOMMENDATION_MESSAGE
+                        : INVALID_RECOMMENDATION_MESSAGE,
+            },
             { status: 500 }
         );
     }
