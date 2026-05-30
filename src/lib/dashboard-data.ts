@@ -7,6 +7,8 @@ import { defaultSettings, type SettingsPayload } from "@/lib/settings-schema";
 
 export interface DashboardData {
     isAuthenticated: boolean;
+    dashboardStatus: "guest" | "ready" | "degraded";
+    dashboardError: string | null;
     profileCompleteness: number;
     analysisCount: number;
     narrativePredictionCount: number;
@@ -40,6 +42,8 @@ export interface DashboardData {
         confidence: string | null;
         createdAt: Date;
     } | null;
+    hasCompletedMbtiTest: boolean;
+    hasBookRecommendation: boolean;
 }
 
 const isComplete = (val: unknown) => {
@@ -98,6 +102,8 @@ export async function getDashboardData(): Promise<DashboardData> {
 
     const publicState: DashboardData = {
         isAuthenticated: false,
+        dashboardStatus: "guest",
+        dashboardError: null,
         profileCompleteness: 0,
         analysisCount: 0,
         narrativePredictionCount: 0,
@@ -105,6 +111,8 @@ export async function getDashboardData(): Promise<DashboardData> {
         latestAnalysis: null,
         consistencySummary: getDashboardConsistencySummary(null, defaultSettings, null, []),
         latestProfileValidation: null,
+        hasCompletedMbtiTest: false,
+        hasBookRecommendation: false,
     };
 
     if (!userId) {
@@ -118,7 +126,16 @@ export async function getDashboardData(): Promise<DashboardData> {
             orderBy: { createdAt: "desc" },
         });
 
-        const [latestAnalysis, settings, books, analysisCount, narrativePredictionCount, latestProfileValidation] = await Promise.all([
+        const [
+            latestAnalysis,
+            settings,
+            books,
+            analysisCount,
+            narrativePredictionCount,
+            latestProfileValidation,
+            completedMbtiTest,
+            latestBookInsight,
+        ] = await Promise.all([
             prisma.analysisResult.findFirst({
                 where: { userId },
                 orderBy: { createdAt: "desc" },
@@ -141,6 +158,17 @@ export async function getDashboardData(): Promise<DashboardData> {
                     createdAt: true,
                 },
             }),
+            prisma.externalMbtiTest.findFirst({
+                where: { userId, provider: "devil.ai", status: "completed" },
+                select: { id: true },
+            }),
+            latestProfile
+                ? prisma.bookInsight.findFirst({
+                      where: { profileId: latestProfile.id },
+                      select: { id: true },
+                      orderBy: { createdAt: "desc" },
+                  })
+                : Promise.resolve(null),
         ]);
 
         // Completeness calculation
@@ -163,6 +191,8 @@ export async function getDashboardData(): Promise<DashboardData> {
 
         return {
             isAuthenticated: true,
+            dashboardStatus: "ready",
+            dashboardError: null,
             profileCompleteness,
             analysisCount,
             narrativePredictionCount,
@@ -199,9 +229,16 @@ export async function getDashboardData(): Promise<DashboardData> {
                 books
             ),
             latestProfileValidation,
+            hasCompletedMbtiTest: !!completedMbtiTest,
+            hasBookRecommendation: !!latestBookInsight,
         };
     } catch (error) {
         console.error("Error fetching dashboard data:", error);
-        return publicState;
+        return {
+            ...publicState,
+            isAuthenticated: true,
+            dashboardStatus: "degraded",
+            dashboardError: "Data dashboard belum dapat dimuat. Coba lagi nanti.",
+        };
     }
 }

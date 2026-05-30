@@ -126,15 +126,8 @@ export function detectCareerEvidence({
     if (process.env.NODE_ENV === "development") {
         console.log("Career evidence debug:", {
             hasCareerInsight,
-            settingsCareerInterests: getObjectField(settings, "careerInterests"),
-            settingsTargetCareer: getObjectField(settings, "targetCareer"),
-            settingsCurrentRole: getObjectField(settings, "currentRole"),
-            settingsPreferredWorkStyle: getObjectField(settings, "preferredWorkStyle"),
-            profileCareerFields: {
-                riasec: getProfileCareerField(profile, "riasec"),
-                careerInterests: getProfileCareerField(profile, "careerInterests"),
-                targetCareer: getProfileCareerField(profile, "targetCareer"),
-            },
+            hasExplicitCareerData,
+            hasSupportingCareerData,
             result,
         });
     }
@@ -157,6 +150,7 @@ export async function getLiveProfileEvidenceSources(userId: string): Promise<Liv
         latestBook,
         latestNarrativePrediction,
         latestValidation,
+        latestBookInsight,
     ] = await Promise.all([
         prisma.analysisResult.findFirst({
             where: { userId },
@@ -181,22 +175,22 @@ export async function getLiveProfileEvidenceSources(userId: string): Promise<Liv
             orderBy: { createdAt: "desc" },
             select: { id: true, createdAt: true, result: true },
         }),
-    ]);
-
-    const [latestBookInsight, latestCareerInsight] = profile
-        ? await Promise.all([
-              prisma.bookInsight.findFirst({
+        profile
+            ? prisma.bookInsight.findFirst({
                   where: { profileId: profile.id },
                   orderBy: { createdAt: "desc" },
                   select: { id: true, createdAt: true },
-              }),
-              prisma.careerInsight.findFirst({
-                  where: { profileId: profile.id },
-                  orderBy: { createdAt: "desc" },
-                  select: { id: true },
-              }),
-          ])
-        : [null, null];
+              })
+            : Promise.resolve(null),
+    ]);
+
+    const latestCareerInsight = profile
+        ? await prisma.careerInsight.findFirst({
+              where: { profileId: profile.id },
+              orderBy: { createdAt: "desc" },
+              select: { id: true },
+          })
+        : null;
 
     const parsedValidation = latestValidation ? profileValidationSchema.safeParse(latestValidation.result) : null;
     const validationQuality = parsedValidation?.success ? parsedValidation.data.data_quality : null;
@@ -209,14 +203,15 @@ export async function getLiveProfileEvidenceSources(userId: string): Promise<Liv
         validationQuality.unfinished_books_count !== unfinishedBooks
     );
 
-    console.log("Book evidence live counts:", {
-        userId,
-        totalBooks,
-        finishedBooks,
-        unfinishedBooks,
-        latestBookInsightId: latestBookInsight?.id ?? null,
-        latestProfileValidationId: latestValidation?.id ?? null,
-    });
+    if (process.env.NODE_ENV === "development") {
+        console.log("Book evidence live counts:", {
+            totalBooks,
+            finishedBooks,
+            unfinishedBooks,
+            hasLatestBookInsight: !!latestBookInsight,
+            hasLatestProfileValidation: !!latestValidation,
+        });
+    }
 
     return {
         profileAvailable: !!profile,

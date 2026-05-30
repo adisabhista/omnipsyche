@@ -102,7 +102,7 @@ export function MbtiProfileComparisonCard({
                             <div key={label} className="rounded-lg border border-slate-200 bg-slate-50 p-3 dark:border-white/10 dark:bg-black/25">
                                 <p className="text-xs font-semibold text-slate-500">{label}</p>
                                 <p className={clsx("mt-2 text-sm font-medium", same ? "text-emerald-600 dark:text-emerald-300" : "text-amber-700 dark:text-amber-200")}>
-                                    {same ? "Sama" : "Berbeda"}
+                                    {same ? `${current[index]} tetap ${devil[index]}` : `${current[index]} menjadi ${devil[index]}`}
                                 </p>
                             </div>
                         );

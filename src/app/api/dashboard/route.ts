@@ -4,7 +4,9 @@ import { getDashboardData } from "@/lib/dashboard-data";
 export async function GET() {
     try {
         const data = await getDashboardData();
-        return NextResponse.json(data);
+        return NextResponse.json(data, {
+            status: data.dashboardStatus === "degraded" ? 503 : 200,
+        });
     } catch (error) {
         console.error("Dashboard API failed:", error);
         return NextResponse.json(
@@ -13,4 +15,3 @@ export async function GET() {
         );
     }
 }
-

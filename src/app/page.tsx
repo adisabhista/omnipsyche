@@ -24,6 +24,10 @@ const confidenceLabels: Record<string, string> = {
 
 export default async function Home() {
     const data = await getDashboardData();
+    const isAuthenticated = data.isAuthenticated === true;
+    const isGuest = data.isAuthenticated === false;
+    const dashboardReady = data.dashboardStatus === "ready";
+    const dashboardDegraded = data.dashboardStatus === "degraded";
 
     // Prepare modules with dynamic statuses if authenticated
     const dynamicModules = [
@@ -31,17 +35,17 @@ export default async function Home() {
         {
             title: "Bangun Profil",
             description: "Alur modular untuk menyusun identitas, narasi, tipologi, sifat, dan minat karier.",
-            status: data.isAuthenticated ? `${data.profileCompleteness}%` : "—"
+            status: dashboardReady ? `${data.profileCompleteness}%` : isAuthenticated ? "Belum tersedia" : "—"
         },
         { 
             title: "Analisis", 
             description: "Sintesis AI untuk membaca pola utama, kekuatan, blind spot, dan arah pertumbuhan.", 
-            status: data.isAuthenticated ? (data.analysisCount > 0 ? "Tersimpan" : "Siap") : "Siap" 
+            status: dashboardReady ? (data.analysisCount > 0 ? "Tersimpan" : "Siap") : isAuthenticated ? "Belum tersedia" : "Siap"
         },
         {
             title: "Konsistensi Profil",
             description: "Pemeriksaan indikatif untuk melihat keselarasan profil dengan data pendukung.",
-            status: data.isAuthenticated ? (data.latestProfileValidation ? "Tersimpan" : "Siap") : "Siap",
+            status: dashboardReady ? (data.latestProfileValidation ? "Tersimpan" : "Siap") : isAuthenticated ? "Belum tersedia" : "Siap",
         },
         { title: "Karier", description: "Pemetaan profil menjadi lingkungan kerja, peran, dan rekomendasi pengembangan.", status: "Baru" },
         { title: "Buku", description: "Rekomendasi bacaan berdasarkan kebutuhan belajar dan tema pertumbuhan profil.", status: "Baru" },
@@ -50,7 +54,7 @@ export default async function Home() {
 
     // Build dynamic next steps
     const nextSteps: Array<{ label: string; value: string; variant?: "warning" | "success" | "muted" }> = [];
-    if (data.isAuthenticated) {
+    if (isAuthenticated && dashboardReady) {
         if (!data.latestProfile) {
             nextSteps.push({ label: "Bangun Profil", value: "Perlu Diisi" });
         } else {
@@ -71,13 +75,15 @@ export default async function Home() {
                 variant: data.latestProfileValidation ? "success" : "warning",
             });
         }
-    } else {
+    } else if (isGuest) {
         // Logged out static steps
         nextSteps.push(
             { label: "Narasi Diri", value: "Perlu Diisi" },
             { label: "Minat Karier", value: "Belum Lengkap" },
             { label: "Analisis Terbaru", value: "Siap Dibuat" }
         );
+    } else {
+        nextSteps.push({ label: "Data Dashboard", value: "Belum tersedia", variant: "warning" });
     }
 
     return (
@@ -92,7 +98,7 @@ export default async function Home() {
                                 Mulai dari profil dasar, lalu gunakan analisis dan konsistensi untuk mendapatkan rekomendasi yang lebih personal.
                             </p>
                             <div className="mt-6 flex flex-wrap gap-3">
-                                {data.isAuthenticated ? (
+                                {isAuthenticated ? (
                                     <>
                                         <Link href="/bangun-profil" className="rounded-lg bg-cyan-300 px-4 py-2 text-sm font-semibold text-slate-950 hover:bg-cyan-200">
                                             {data.latestProfile ? "Perbarui Profil" : "Bangun Profil"}
@@ -114,17 +120,17 @@ export default async function Home() {
                             </div>
                         </div>
                         <div className="grid gap-3 sm:grid-cols-3 lg:grid-cols-1">
-                            {data.isAuthenticated ? (
+                            {isAuthenticated ? (
                                 <>
                                     <MetricCard 
                                         label="Kelengkapan Profil" 
-                                        value={`${data.profileCompleteness}%`} 
-                                        detail={data.profileCompleteness === 0 ? "Profil belum dibuat." : "Identitas dan tipologi gabungan."} 
+                                        value={dashboardReady ? `${data.profileCompleteness}%` : "..."}
+                                        detail={dashboardReady ? (data.profileCompleteness === 0 ? "Profil belum dibuat." : "Identitas dan tipologi gabungan.") : "Data dashboard belum tersedia."}
                                     />
                                     <MetricCard 
                                         label="Wawasan Tersimpan" 
-                                        value={String(data.analysisCount + data.narrativePredictionCount)} 
-                                        detail="Analisis dan riwayat terintegrasi." 
+                                        value={dashboardReady ? String(data.analysisCount + data.narrativePredictionCount) : "..."}
+                                        detail={dashboardReady ? "Analisis dan riwayat terintegrasi." : "Data dashboard belum tersedia."}
                                     />
                                     <MetricCard 
                                         label="Modul Tersedia" 
@@ -150,9 +156,20 @@ export default async function Home() {
                     </div>
                 </section>
 
-                <OnboardingProgressCard data={data} />
+                {dashboardDegraded && (
+                    <SurfaceCard title="Dashboard Belum Tersedia">
+                        <p className="text-sm leading-6 text-amber-200">
+                            {data.dashboardError ?? "Data dashboard belum dapat dimuat. Coba lagi nanti."}
+                        </p>
+                        <p className="mt-2 text-sm leading-6 text-slate-500">
+                            Kamu tetap masuk ke akun. Muat ulang halaman atau coba lagi nanti.
+                        </p>
+                    </SurfaceCard>
+                )}
 
-                {data.isAuthenticated ? (
+                {isAuthenticated && dashboardReady && <OnboardingProgressCard data={data} />}
+
+                {isAuthenticated && dashboardReady ? (
                     <>
                         {data.latestAnalysis ? (
                             <SurfaceCard 
@@ -182,13 +199,13 @@ export default async function Home() {
                             </SurfaceCard>
                         )}
                     </>
-                ) : (
+                ) : isGuest ? (
                     <SurfaceCard title="Platform Intelijensi Kepribadian Modular">
                         <p className="text-sm leading-6 text-slate-400">
                             Selamat datang di OmniPsyche! Hubungkan berbagai dimensi diri Anda—dari tes tipologi formal seperti MBTI dan Enneagram, hingga minat karier, riwayat personal, dan preferensi bacaan Anda—ke dalam satu profil gabungan yang disintesis secara cerdas menggunakan AI.
                         </p>
                     </SurfaceCard>
-                )}
+                ) : null}
 
                 <SurfaceCard title="Modul Platform" eyebrow="Ekosistem">
                     <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
@@ -200,7 +217,7 @@ export default async function Home() {
             </div>
 
             <RightRail>
-                {data.isAuthenticated ? (
+                {isAuthenticated && dashboardReady ? (
                     <>
                         <SurfaceCard title="Kelengkapan Profil">
                             <div className="h-2 rounded-full bg-white/10">
@@ -252,7 +269,7 @@ export default async function Home() {
                             </p>
                         </SurfaceCard>
                     </>
-                ) : (
+                ) : isGuest ? (
                     <SurfaceCard title="Mulai Sekarang">
                         <p className="text-sm leading-6 text-slate-500 mb-4">
                             Mulai perjalanan eksplorasi kepribadian mendalam hari ini.
@@ -260,6 +277,12 @@ export default async function Home() {
                         <Link href="/register" className="block text-center rounded-lg bg-cyan-300 py-2.5 text-sm font-semibold text-slate-950 hover:bg-cyan-200">
                             Daftar Gratis
                         </Link>
+                    </SurfaceCard>
+                ) : (
+                    <SurfaceCard title="Status Akun">
+                        <p className="text-sm leading-6 text-slate-500">
+                            Akun aktif. Data ringkasan dashboard belum dapat dimuat.
+                        </p>
                     </SurfaceCard>
                 )}
             </RightRail>

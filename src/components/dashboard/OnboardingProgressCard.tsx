@@ -5,12 +5,13 @@ import { ArrowRight, CheckCircle2, CircleDot, CircleEllipsis, LockKeyhole } from
 type StepStatus = "completed" | "current" | "locked" | "optional";
 
 type DashboardSnapshot = {
-    isAuthenticated: boolean;
     profileCompleteness: number;
     analysisCount: number;
     latestProfile: unknown | null;
     latestAnalysis: unknown | null;
     latestProfileValidation: unknown | null;
+    hasCompletedMbtiTest: boolean;
+    hasBookRecommendation: boolean;
 };
 
 type JourneyStep = {
@@ -30,9 +31,11 @@ const statusLabels: Record<StepStatus, string> = {
 };
 
 function buildSteps(data: DashboardSnapshot): JourneyStep[] {
-    const profileCompleted = data.isAuthenticated && !!data.latestProfile && data.profileCompleteness > 0;
-    const analysisCompleted = data.isAuthenticated && (data.analysisCount > 0 || !!data.latestAnalysis);
-    const consistencyCompleted = data.isAuthenticated && !!data.latestProfileValidation;
+    const profileCompleted = !!data.latestProfile && data.profileCompleteness > 0;
+    const analysisCompleted = data.analysisCount > 0 || !!data.latestAnalysis;
+    const consistencyCompleted = !!data.latestProfileValidation;
+    const mbtiCompleted = data.hasCompletedMbtiTest;
+    const recommendationCompleted = data.hasBookRecommendation;
 
     return [
         {
@@ -49,7 +52,7 @@ function buildSteps(data: DashboardSnapshot): JourneyStep[] {
             description: "Ambil tes Devil.ai sebagai data pendukung opsional.",
             cta: "Mulai Tes MBTI",
             href: "/tipologi/mbti/tes",
-            status: "optional",
+            status: mbtiCompleted ? "completed" : "optional",
         },
         {
             key: "analysis",
@@ -73,7 +76,7 @@ function buildSteps(data: DashboardSnapshot): JourneyStep[] {
             description: "Lihat rekomendasi karier dan buku dari profilmu.",
             cta: "Lihat Rekomendasi",
             href: "/buku",
-            status: analysisCompleted && consistencyCompleted ? "current" : analysisCompleted ? "optional" : "locked",
+            status: recommendationCompleted ? "completed" : analysisCompleted && consistencyCompleted ? "current" : analysisCompleted ? "optional" : "locked",
         },
     ];
 }

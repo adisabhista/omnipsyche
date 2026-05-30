@@ -1,6 +1,5 @@
 import clsx from "clsx";
 import type { LiveProfileEvidenceSources } from "@/lib/profile-evidence-sources";
-import type { ProfileValidationResult } from "@/lib/profile-validation-schema";
 
 type Strength = "strong" | "medium" | "weak" | "insufficient";
 
@@ -18,79 +17,6 @@ const strengthLabels: Record<Strength, string> = {
     weak: "Lemah",
     insufficient: "Belum cukup",
 };
-
-function hasBookInsight(result: ProfileValidationResult) {
-    return result.evidence.some((item) => item.source === "book_recommendation");
-}
-
-function buildSourceItems(result: ProfileValidationResult): SourceItem[] {
-    const quality = result.data_quality;
-    const bookCount = quality.book_collection_count;
-    const finishedCount = quality.finished_books_count;
-
-    const bookStrength: Strength = bookCount >= 5 ? "strong" : bookCount > 0 ? "weak" : "insufficient";
-    const finishedStrength: Strength = finishedCount >= 3 ? "strong" : finishedCount > 0 ? "medium" : "insufficient";
-    const bookInsightAvailable = hasBookInsight(result);
-
-    return [
-        {
-            label: "Profil",
-            available: quality.profile_available,
-            status: quality.profile_available ? "Tersedia" : "Belum tersedia",
-            strength: quality.profile_available ? "strong" : "insufficient",
-            explanation: quality.profile_available ? "Profil dasar menjadi konteks utama pemeriksaan." : "Profil dasar belum tersedia.",
-        },
-        {
-            label: "Analisis AI",
-            available: quality.analysis_available,
-            status: quality.analysis_available ? "Tersedia" : "Belum tersedia",
-            strength: quality.analysis_available ? "strong" : "insufficient",
-            explanation: quality.analysis_available ? "Analisis tersimpan memberi konteks sintesis yang lebih luas." : "Belum ada analisis AI tersimpan.",
-        },
-        {
-            label: "Pengaturan",
-            available: quality.settings_available,
-            status: quality.settings_available ? "Tersedia" : "Belum tersedia",
-            strength: quality.settings_available ? "medium" : "insufficient",
-            explanation: quality.settings_available ? "Preferensi dan latar personal ikut memperjelas konteks." : "Pengaturan personal belum banyak terisi.",
-        },
-        {
-            label: "Koleksi Buku",
-            available: bookCount > 0,
-            status: bookCount >= 5 ? "Tersedia" : bookCount > 0 ? "Terbatas" : "Belum tersedia",
-            strength: bookStrength,
-            explanation: bookCount > 0 ? `${bookCount} buku memberi sinyal minat bacaan.` : "Belum ada koleksi buku yang bisa dibaca sebagai sinyal.",
-        },
-        {
-            label: "Buku Selesai",
-            available: finishedCount > 0,
-            status: finishedCount >= 3 ? "Tersedia" : finishedCount > 0 ? "Terbatas" : "Belum tersedia",
-            strength: finishedStrength,
-            explanation: finishedCount > 0 ? `${finishedCount} buku selesai memberi sinyal preferensi yang lebih kuat.` : "Belum ada buku selesai.",
-        },
-        {
-            label: "Minat Karier",
-            available: quality.career_data_available,
-            status: quality.career_data_available ? "Tersedia" : "Belum tersedia",
-            strength: quality.career_data_available ? "medium" : "insufficient",
-            explanation: quality.career_data_available ? "Data karier membantu membaca arah lingkungan dan peran." : "Data minat karier belum tersedia.",
-        },
-        {
-            label: "Narasi Diri",
-            available: quality.narrative_data_available,
-            status: quality.narrative_data_available ? "Tersedia" : "Belum tersedia",
-            strength: quality.narrative_data_available ? "strong" : "insufficient",
-            explanation: quality.narrative_data_available ? "Narasi diri memberi konteks pengalaman dan pola bahasa." : "Narasi diri belum tersedia.",
-        },
-        {
-            label: "Rekomendasi Buku",
-            available: bookInsightAvailable,
-            status: bookInsightAvailable ? "Tersedia" : "Belum tersedia",
-            strength: bookInsightAvailable ? "medium" : "insufficient",
-            explanation: bookInsightAvailable ? "Insight buku ikut menjadi konteks tambahan." : "Belum ada insight rekomendasi buku.",
-        },
-    ];
-}
 
 function buildLiveSourceItems(sources: LiveProfileEvidenceSources): SourceItem[] {
     const bookCount = sources.bookCollectionCount;
@@ -190,13 +116,22 @@ function StrengthBars({ strength }: { strength: Strength }) {
 }
 
 export function EvidenceSourceCard({
-    result,
     evidenceSources,
 }: {
-    result: ProfileValidationResult;
     evidenceSources?: LiveProfileEvidenceSources | null;
 }) {
-    const items = evidenceSources ? buildLiveSourceItems(evidenceSources) : buildSourceItems(result);
+    if (!evidenceSources) {
+        return (
+            <section className="rounded-lg border border-slate-200 bg-white/85 p-5 shadow-[0_20px_70px_rgba(15,23,42,0.08)] dark:border-white/10 dark:bg-white/[0.045] dark:shadow-[0_20px_70px_rgba(0,0,0,0.22)]">
+                <h2 className="text-lg font-semibold text-slate-950 dark:text-slate-100">Sumber Data Saat Ini</h2>
+                <p className="mt-3 text-sm leading-6 text-slate-600 dark:text-slate-400">
+                    Data sumber langsung belum dapat dimuat. Muat ulang halaman untuk melihat kondisi terbaru.
+                </p>
+            </section>
+        );
+    }
+
+    const items = buildLiveSourceItems(evidenceSources);
     const dataChangedAfterValidation = !!evidenceSources && (
         evidenceSources.bookInsightChangedAfterValidation ||
         evidenceSources.bookCollectionChangedAfterValidation ||

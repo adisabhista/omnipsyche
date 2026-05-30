@@ -23,13 +23,11 @@ function parseBookRecommendation(text: string) {
 }
 
 async function saveBookInsight({
-    userId,
     profileId,
     analysisId,
     recommendation,
     model,
 }: {
-    userId: string;
     profileId: string;
     analysisId: string;
     recommendation: unknown;
@@ -45,12 +43,12 @@ async function saveBookInsight({
             },
         });
 
-        console.log("BookInsight saved:", {
-            id: bookInsight.id,
-            userId,
-            profileId,
-            createdAt: bookInsight.createdAt,
-        });
+        if (process.env.NODE_ENV === "development") {
+            console.log("BookInsight saved:", {
+                id: bookInsight.id,
+                createdAt: bookInsight.createdAt,
+            });
+        }
 
         return bookInsight;
     } catch (error) {
@@ -187,7 +185,6 @@ export async function POST() {
             rawResponse = generationResult.text;
             const parsed = parseBookRecommendation(rawResponse);
             const bookInsight = await saveBookInsight({
-                userId: authResult.userId,
                 profileId: profile.id,
                 analysisId: analysis.id,
                 recommendation: parsed,
@@ -219,7 +216,6 @@ export async function POST() {
             );
             const repaired = parseBookRecommendation(repairResult.text);
             const bookInsight = await saveBookInsight({
-                userId: authResult.userId,
                 profileId: profile.id,
                 analysisId: analysis.id,
                 recommendation: repaired,

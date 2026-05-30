@@ -168,16 +168,16 @@ export default function ValidasiProfilPage() {
     }
 
     const result = validation?.result ?? null;
-    const quality = result
+    const quality = result && evidenceSources
         ? {
-              profileAvailable: evidenceSources?.profileAvailable ?? result.data_quality.profile_available,
-              analysisAvailable: evidenceSources?.analysisAvailable ?? result.data_quality.analysis_available,
-              settingsAvailable: evidenceSources?.settingsAvailable ?? result.data_quality.settings_available,
-              bookCollectionCount: evidenceSources?.bookCollectionCount ?? result.data_quality.book_collection_count,
-              finishedBooksCount: evidenceSources?.finishedBooksCount ?? result.data_quality.finished_books_count,
-              unfinishedBooksCount: evidenceSources?.unfinishedBooksCount ?? result.data_quality.unfinished_books_count,
-              careerDataAvailable: evidenceSources?.careerDataAvailable ?? result.data_quality.career_data_available,
-              narrativeDataAvailable: evidenceSources?.narrativeDataAvailable ?? result.data_quality.narrative_data_available,
+              profileAvailable: evidenceSources.profileAvailable,
+              analysisAvailable: evidenceSources.analysisAvailable,
+              settingsAvailable: evidenceSources.settingsAvailable,
+              bookCollectionCount: evidenceSources.bookCollectionCount,
+              finishedBooksCount: evidenceSources.finishedBooksCount,
+              unfinishedBooksCount: evidenceSources.unfinishedBooksCount,
+              careerDataAvailable: evidenceSources.careerDataAvailable,
+              narrativeDataAvailable: evidenceSources.narrativeDataAvailable,
           }
         : null;
 
@@ -249,21 +249,27 @@ export default function ValidasiProfilPage() {
                             <MetricCard label="Tingkat Keyakinan" value={confidenceLabels[result.confidence]} detail="Kekuatan data pendukung saat ini." />
                         </div>
 
-                        <EvidenceSourceCard result={result} evidenceSources={evidenceSources} />
+                        <EvidenceSourceCard evidenceSources={evidenceSources} />
 
                         <SurfaceCard title="Kualitas Data">
-                            <StatusList
-                                items={[
-                                    { label: "Profil tersedia", value: formatBoolean(quality?.profileAvailable ?? false) },
-                                    { label: "Analisis tersedia", value: formatBoolean(quality?.analysisAvailable ?? false) },
-                                    { label: "Pengaturan tersedia", value: formatBoolean(quality?.settingsAvailable ?? false) },
-                                    { label: "Jumlah buku koleksi", value: String(quality?.bookCollectionCount ?? 0) },
-                                    { label: "Buku selesai", value: String(quality?.finishedBooksCount ?? 0) },
-                                    { label: "Buku belum selesai", value: String(quality?.unfinishedBooksCount ?? 0) },
-                                    { label: "Data karier tersedia", value: formatBoolean(quality?.careerDataAvailable ?? false) },
-                                    { label: "Data naratif tersedia", value: formatBoolean(quality?.narrativeDataAvailable ?? false) },
-                                ]}
-                            />
+                            {quality ? (
+                                <StatusList
+                                    items={[
+                                        { label: "Profil tersedia", value: formatBoolean(quality.profileAvailable) },
+                                        { label: "Analisis tersedia", value: formatBoolean(quality.analysisAvailable) },
+                                        { label: "Pengaturan tersedia", value: formatBoolean(quality.settingsAvailable) },
+                                        { label: "Jumlah buku koleksi", value: String(quality.bookCollectionCount) },
+                                        { label: "Buku selesai", value: String(quality.finishedBooksCount) },
+                                        { label: "Buku belum selesai", value: String(quality.unfinishedBooksCount) },
+                                        { label: "Data karier tersedia", value: formatBoolean(quality.careerDataAvailable) },
+                                        { label: "Data naratif tersedia", value: formatBoolean(quality.narrativeDataAvailable) },
+                                    ]}
+                                />
+                            ) : (
+                                <p className="text-sm leading-6 text-slate-500">
+                                    Data sumber langsung belum dapat dimuat. Muat ulang halaman untuk melihat kondisi terbaru.
+                                </p>
+                            )}
                             {result.data_quality.limitations.length > 0 && (
                                 <div className="mt-4 space-y-2">
                                     {result.data_quality.limitations.map((limitation) => (

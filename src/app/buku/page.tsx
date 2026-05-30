@@ -740,11 +740,6 @@ export default function BukuPage() {
             const response = await fetch("/api/books/recommend", { method: "POST" });
             const data = await response.json() as BookRecommendationResponse | unknown;
 
-            if (process.env.NODE_ENV === "development") {
-                console.log("Book recommendation response:", data);
-                console.log("Current moduleState before update:", moduleState);
-            }
-
             if (!response.ok) {
                 throw new Error(isRecord(data) && typeof data.error === "string" ? data.error : "Rekomendasi buku gagal dibuat.");
             }
@@ -756,7 +751,7 @@ export default function BukuPage() {
 
             if (!normalizedRecommendation) {
                 if (process.env.NODE_ENV === "development") {
-                    console.warn("Unrecognized book recommendation response shape:", data);
+                    console.warn("Unrecognized book recommendation response shape.");
                 }
                 setError("Format rekomendasi tidak dikenali.");
                 return;

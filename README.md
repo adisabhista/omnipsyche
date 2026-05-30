@@ -51,7 +51,7 @@
 5. Install dependencies, run the database migration, and start the development server:
     ```bash
     npm install
-    npx prisma migrate dev --name add_auth
+    npx prisma migrate dev
     npx prisma generate
     npm run dev
     ```
@@ -93,10 +93,28 @@ Useful backend commands:
 
 ```bash
 npx prisma validate
-npx prisma migrate dev --name add_auth
+npx prisma migrate dev
 npx prisma generate
 npx prisma studio
 ```
+
+For production or an existing deployed database, apply committed migrations without creating a new migration:
+
+```bash
+npx prisma migrate deploy
+npx prisma generate
+```
+
+### Prisma Troubleshooting
+
+If Prisma reports `P2021` (`table does not exist`), the database schema has not received the committed migrations. Confirm that `DATABASE_URL` points to the intended PostgreSQL database, then run:
+
+```bash
+npx prisma migrate deploy
+npx prisma generate
+```
+
+For a local development database, use `npx prisma migrate dev` instead. Restart `npm run dev` after applying migrations.
 
 ## Cloud Run Deployment
 
