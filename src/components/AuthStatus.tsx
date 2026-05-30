@@ -14,7 +14,7 @@ export default function AuthStatus() {
         );
     }
 
-    if (status !== "authenticated") {
+    if (status === "unauthenticated") {
         return (
             <div className="flex items-center gap-2">
                 <Link
@@ -29,6 +29,14 @@ export default function AuthStatus() {
                 >
                     Daftar
                 </Link>
+            </div>
+        );
+    }
+
+    if (!session) {
+        return (
+            <div className="hidden rounded-lg border border-white/10 px-3 py-2 text-sm text-slate-500 md:block">
+                Memuat...
             </div>
         );
     }

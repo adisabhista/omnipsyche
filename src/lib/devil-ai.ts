@@ -33,44 +33,21 @@ export function getDevilAiConfig(): DevilAiConfig | null {
     return { apiKey, baseUrl };
 }
 
-function redactDevilAiSecrets(value: string, apiKey?: string): string {
-    let redacted = value;
-
-    if (apiKey) {
-        redacted = redacted.split(apiKey).join("[REDACTED_DEVIL_AI_API_KEY]");
-    }
-
-    return redacted
-        .replace(/(api_key["']?\s*[:=]\s*["']?)[^"',&\s}]+/gi, "$1[REDACTED_DEVIL_AI_API_KEY]")
-        .replace(/(Authorization["']?\s*[:=]\s*["']?Bearer\s+)[^"',&\s}]+/gi, "$1[REDACTED_DEVIL_AI_API_KEY]");
-}
-
-function safePreview(value: unknown, apiKey?: string): string {
-    const raw =
-        typeof value === "string"
-            ? value
-            : JSON.stringify(value, null, 2) ?? String(value);
-
-    return redactDevilAiSecrets(raw, apiKey).slice(0, 4000);
-}
-
 function logDevilAiDiagnostic(
     label: string,
     details: {
         httpStatus: number;
         ok: boolean;
         contentType: string | null;
-        rawText?: string;
-        parsedJson?: unknown;
         zodIssues?: z.ZodIssue[];
-        apiKey?: string;
     },
 ) {
+    if (process.env.NODE_ENV !== "development") return;
+
     console.error(label, {
         httpStatus: details.httpStatus,
         ok: details.ok,
         contentType: details.contentType,
-        rawResponse: safePreview(details.parsedJson ?? details.rawText ?? "", details.apiKey),
         zodIssues: details.zodIssues,
     });
 }
@@ -160,8 +137,6 @@ async function requestDevilAi(
             httpStatus: res.status,
             ok: res.ok,
             contentType,
-            rawText,
-            apiKey: config.apiKey,
         });
         throw new Error(INVALID_RESPONSE_MESSAGE);
     }
@@ -185,8 +160,6 @@ export async function createDevilAiTest(
     if (process.env.NODE_ENV === "development") {
         console.info("Calling Devil.ai new_test", {
             baseUrl: config.baseUrl,
-            hasApiKey: Boolean(config.apiKey),
-            apiKeyLength: config.apiKey.length,
         });
     }
 
@@ -214,9 +187,7 @@ export async function createDevilAiTest(
             httpStatus: raw.httpStatus,
             ok: raw.ok,
             contentType: raw.contentType,
-            parsedJson: raw.json,
             zodIssues: parsed.error.issues,
-            apiKey: config.apiKey,
         });
         throw new Error(INVALID_RESPONSE_MESSAGE);
     }
@@ -241,9 +212,7 @@ export async function checkMbtiTest(testId: string): Promise<CheckTestResponse> 
             httpStatus: raw.httpStatus,
             ok: raw.ok,
             contentType: raw.contentType,
-            parsedJson: raw.json,
             zodIssues: parsed.error.issues,
-            apiKey: config.apiKey,
         });
         throw new Error(INVALID_RESPONSE_MESSAGE);
     }

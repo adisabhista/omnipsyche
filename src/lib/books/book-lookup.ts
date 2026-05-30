@@ -66,7 +66,6 @@ async function lookupGoogleBooks(title: string, author?: string): Promise<BookLo
     ];
 
     for (const query of queries) {
-        debugBookLookup("Google Books query:", query);
         const candidates = await fetchGoogleBooksCandidates(query);
         if (candidates.length > 0) return candidates;
     }
@@ -232,8 +231,6 @@ export async function lookupBookMetadata(input: { title: string; author?: string
     let googleCandidates: BookLookupCandidate[] = [];
     let openLibraryCandidates: BookLookupCandidate[] = [];
     let aiFallbackCandidates: BookLookupCandidate[] = [];
-
-    debugBookLookup("Book lookup input:", { title: input.title, author: input.author });
 
     try {
         googleCandidates = await lookupGoogleBooks(input.title, input.author);

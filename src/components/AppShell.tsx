@@ -149,9 +149,12 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
             ...(item.children?.filter((c) => c.href).map((c) => ({ href: c.href })) ?? []),
         ])
     );
-    const { status } = useSession();
+    const { data: session, status } = useSession();
+    const hasSessionUser = Boolean(session?.user);
     const [completeness, setCompleteness] = useState<number | null>(null);
-    const [hasProfile, setHasProfile] = useState<boolean>(false);
+    const [hasProfile, setHasProfile] = useState<boolean | null>(null);
+    const [dashboardLoading, setDashboardLoading] = useState(true);
+    const [dashboardError, setDashboardError] = useState<string | null>(null);
     const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
     const [sidebarPreferenceLoaded, setSidebarPreferenceLoaded] = useState(false);
 
@@ -168,23 +171,57 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
     }, [sidebarCollapsed, sidebarPreferenceLoaded]);
 
     useEffect(() => {
-        if (status === "authenticated") {
-            fetch("/api/dashboard")
-                .then((res) => res.json())
-                .then((data) => {
-                    if (data.isAuthenticated) {
-                        setCompleteness(data.profileCompleteness);
-                        setHasProfile(!!data.latestProfile);
-                    }
-                })
-                .catch((err) => console.error("Failed to load dashboard data in sidebar:", err));
-        } else {
+        if (status === "loading") return;
+
+        if (status === "unauthenticated") {
             Promise.resolve().then(() => {
                 setCompleteness(null);
-                setHasProfile(false);
+                setHasProfile(null);
+                setDashboardLoading(false);
+                setDashboardError(null);
             });
+            return;
         }
-    }, [status, pathname]);
+
+        const controller = new AbortController();
+
+        Promise.resolve().then(() => {
+            setDashboardLoading(true);
+            setDashboardError(null);
+        });
+
+        fetch("/api/dashboard", { signal: controller.signal })
+            .then(async (res) => {
+                const data = await res.json();
+
+                if (process.env.NODE_ENV === "development") {
+                    console.log("Dashboard auth state:", {
+                        sessionStatus: status,
+                        dashboardLoading: false,
+                        isAuthenticated: data?.isAuthenticated,
+                        hasUser: hasSessionUser,
+                    });
+                }
+
+                if (data?.isAuthenticated === true && data?.dashboardStatus === "ready") {
+                    setCompleteness(data.profileCompleteness);
+                    setHasProfile(!!data.latestProfile);
+                    return;
+                }
+
+                setDashboardError(data?.dashboardError || data?.error || "Data dashboard belum dapat dimuat.");
+            })
+            .catch((err) => {
+                if (err instanceof Error && err.name === "AbortError") return;
+                console.error("Failed to load dashboard data in sidebar:", err);
+                setDashboardError("Data dashboard belum dapat dimuat.");
+            })
+            .finally(() => {
+                if (!controller.signal.aborted) setDashboardLoading(false);
+            });
+
+        return () => controller.abort();
+    }, [hasSessionUser, session?.user?.id, status, pathname]);
 
     return (
         <div className="h-screen overflow-hidden bg-slate-50 text-slate-950 selection:bg-cyan-400/30 selection:text-cyan-950 dark:bg-[#050608] dark:text-slate-100 dark:selection:text-cyan-100">
@@ -315,10 +352,10 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
                                 {sidebarCollapsed ? (
                                     <div
                                         className="grid h-10 w-full place-items-center rounded-md bg-cyan-300/10 text-[11px] font-semibold text-cyan-700 ring-1 ring-cyan-300/25 dark:text-cyan-200"
-                                        title={`Profil aktif. Kelengkapan ${completeness ?? 0}%`}
-                                        aria-label={`Profil aktif. Kelengkapan ${completeness ?? 0}%`}
+                                        title={dashboardLoading ? "Memuat profil aktif" : dashboardError ? "Data profil belum tersedia" : `Profil aktif. Kelengkapan ${completeness ?? 0}%`}
+                                        aria-label={dashboardLoading ? "Memuat profil aktif" : dashboardError ? "Data profil belum tersedia" : `Profil aktif. Kelengkapan ${completeness ?? 0}%`}
                                     >
-                                        {completeness ?? 0}%
+                                        {dashboardLoading || dashboardError ? "..." : `${completeness ?? 0}%`}
                                     </div>
                                 ) : (
                                     <>
@@ -327,15 +364,17 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
                                             <span className="rounded-full bg-emerald-400/10 px-2 py-1 text-[11px] text-emerald-600 dark:text-emerald-300">Aktif</span>
                                         </div>
                                         <p className="font-medium text-slate-900 dark:text-slate-100">
-                                            {hasProfile ? "Profil Gabungan" : "Profil belum dibuat."}
+                                            {dashboardLoading ? "Memuat profil..." : dashboardError ? "Data belum tersedia." : hasProfile ? "Profil Gabungan" : "Profil belum dibuat."}
                                         </p>
                                         <div className="mt-3 h-2 rounded-full bg-slate-200 dark:bg-white/10">
                                             <div
                                                 className="h-2 rounded-full bg-gradient-to-r from-cyan-300 to-violet-400 transition-all duration-500"
-                                                style={{ width: `${completeness ?? 0}%` }}
+                                                style={{ width: `${dashboardLoading || dashboardError ? 0 : completeness ?? 0}%` }}
                                             />
                                         </div>
-                                        <p className="mt-2 text-xs text-slate-500">Kelengkapan {completeness ?? 0}%</p>
+                                        <p className="mt-2 text-xs text-slate-500">
+                                            {dashboardLoading ? "Memuat kelengkapan..." : dashboardError ? dashboardError : `Kelengkapan ${completeness ?? 0}%`}
+                                        </p>
                                     </>
                                 )}
                             </div>
@@ -358,7 +397,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
                             <div className="flex items-center gap-3">
                             <div className="hidden items-center gap-2 rounded-lg border border-slate-200 bg-white/80 px-3 py-2 text-sm text-slate-700 dark:border-white/10 dark:bg-white/[0.04] dark:text-slate-300 md:flex">
                                 <Compass className="h-4 w-4 text-cyan-300" />
-                                Profil Aktif
+                                {status === "loading" ? "Memuat..." : status === "authenticated" ? "Profil Aktif" : "Mode Tamu"}
                             </div>
                             <AuthStatus />
                             <Link
