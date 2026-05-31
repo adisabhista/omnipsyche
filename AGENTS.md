@@ -21,10 +21,13 @@
 
 ## AI and Environment
 
-- Use Vertex AI through GCP, not a Gemini API key.
+- Use Gemini API key authentication server-side, not Vertex AI.
 - Preferred environment variables:
-  - `GOOGLE_VERTEX_AI_PROJECT_ID`
-  - `GOOGLE_VERTEX_AI_LOCATION`
-  - `GEMINI_PERSONALITY_MODEL`
-- Default model:
+  - `GEMINI_API_KEY`
+  - `GEMINI_API_PRIMARY_MODEL`
+  - `GEMINI_API_FALLBACK_MODEL`
+  - `ENABLE_AI_MODEL_FALLBACK`
+- Default primary model:
+  - `gemini-3.5-flash`
+- Default fallback model:
   - `gemini-2.5-flash`
