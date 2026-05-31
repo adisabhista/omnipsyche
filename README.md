@@ -116,19 +116,86 @@ npx prisma generate
 
 For a local development database, use `npx prisma migrate dev` instead. Restart `npm run dev` after applying migrations.
 
-## Cloud Run Deployment
+## Production Deployment
 
-For production, deploy OmniPsyche to Cloud Run and provide the Gemini API key as a secret or environment variable.
+OmniPsyche is prepared for deployment with:
 
-* Set these Cloud Run environment variables:
-    ```bash
-    GEMINI_API_KEY=YOUR_GEMINI_API_KEY
-    GEMINI_API_PRIMARY_MODEL=gemini-3.5-flash
-    GEMINI_API_FALLBACK_MODEL=gemini-2.5-flash
-    ENABLE_AI_MODEL_FALLBACK=true
-    ```
-* Vertex AI service account JSON and project/region variables are no longer required.
-* Do not expose AI credentials with `NEXT_PUBLIC_` variables.
+* Cloud Run for the standalone Next.js service
+* Cloud SQL PostgreSQL through a Unix socket
+* Secret Manager for database, authentication, Gemini, and Devil.ai secrets
+* Artifact Registry for Docker images
+* GitHub Actions with Workload Identity Federation
+* A separate Cloud Run Job for `prisma migrate deploy`
+
+The deployment workflow builds a service image and a migration image. It runs
+the migration job before releasing a new service revision. Migrations are not
+executed during application startup because Cloud Run can start multiple
+instances concurrently.
+
+Production secrets:
+
+```env
+DATABASE_URL="postgresql://DB_USER:DB_PASSWORD@localhost:5432/DB_NAME?host=/cloudsql/PROJECT_ID:REGION:INSTANCE_NAME"
+AUTH_SECRET="stable-secret"
+NEXTAUTH_SECRET="stable-secret"
+GEMINI_API_KEY="your_api_key"
+DEVIL_AI_API_KEY="your_api_key"
+```
+
+Production non-secret environment:
+
+```env
+NEXTAUTH_URL="https://your-service-url"
+AUTH_URL="https://your-service-url"
+GEMINI_API_PRIMARY_MODEL="gemini-3.5-flash"
+GEMINI_API_FALLBACK_MODEL="gemini-2.5-flash"
+ENABLE_AI_MODEL_FALLBACK="true"
+DEVIL_AI_BASE_URL="https://api.devil.ai/v1"
+DEVIL_AI_LANG="en"
+NODE_ENV="production"
+```
+
+Do not expose API keys with `NEXT_PUBLIC_` variables. Vertex AI service
+account JSON and project/region variables are not required for AI generation.
+
+The complete setup guide is in
+[`docs/deployment-gcp.md`](docs/deployment-gcp.md).
+
+## CI/CD
+
+Pull requests and pushes to `master` or `main` run:
+
+```bash
+npm ci
+npm run prisma:generate
+npm run lint
+npm run build
+```
+
+Pushes to `master` or `main` also trigger the Cloud Run deployment workflow.
+GitHub uses short-lived Workload Identity Federation credentials, not a
+service-account JSON key.
+
+## Production Troubleshooting
+
+### NextAuth shows guest state
+
+Confirm that `AUTH_SECRET`, `NEXTAUTH_SECRET`, `NEXTAUTH_URL`, and `AUTH_URL`
+are set consistently. Changing auth secrets invalidates existing sessions.
+
+### Cloud SQL connection fails
+
+Confirm the Unix-socket `DATABASE_URL`, Cloud SQL instance connection name,
+and the runtime service account's Cloud SQL Client role.
+
+### Gemini API fails
+
+Confirm `GEMINI_API_KEY`, `GEMINI_API_PRIMARY_MODEL`, and
+`GEMINI_API_FALLBACK_MODEL`.
+
+### Devil.ai fails
+
+Confirm `DEVIL_AI_API_KEY`, `DEVIL_AI_BASE_URL`, and `DEVIL_AI_LANG`.
 
 ## Strict Personality Parsing & Consistency Audit
 
