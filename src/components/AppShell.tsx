@@ -80,6 +80,16 @@ const pageMeta: Record<string, { title: string; subtitle: string; action: string
         subtitle: "Pusat kendali profil, wawasan, dan modul OmniPsyche.",
         action: "Bangun Profil",
     },
+    "/login": {
+        title: "Masuk",
+        subtitle: "Masuk ke OmniPsyche.",
+        action: "Masuk",
+    },
+    "/register": {
+        title: "Daftar",
+        subtitle: "Buat akun OmniPsyche.",
+        action: "Daftar",
+    },
     "/tipologi": {
         title: "Tipologi",
         subtitle: "Jelajahi kerangka kepribadian tanpa mengunci profil pada satu sistem.",

@@ -1,5 +1,5 @@
 import "server-only";
-import type { Prisma } from "@prisma/client";
+import { Prisma } from "@prisma/client";
 import { auth } from "@/lib/auth";
 import { getDashboardConsistencySummary, type DashboardConsistencySummary } from "@/lib/profile-consistency";
 import { prisma } from "@/lib/prisma";
@@ -96,9 +96,33 @@ function serializeSettings(settings: {
     };
 }
 
+async function findCompletedMbtiTest(userId: string) {
+    try {
+        return await prisma.externalMbtiTest.findFirst({
+            where: { userId, provider: "devil.ai", status: "completed" },
+            select: { id: true },
+        });
+    } catch (error) {
+        if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2021") {
+            console.warn("Dashboard external MBTI status unavailable: required table does not exist.");
+            return null;
+        }
+
+        throw error;
+    }
+}
+
 export async function getDashboardData(): Promise<DashboardData> {
     const session = await auth();
     const userId = session?.user?.id;
+
+    if (process.env.NODE_ENV === "development") {
+        console.log("Dashboard auth debug:", {
+            hasSession: Boolean(session),
+            userEmail: session?.user?.email ?? null,
+            userId: userId ?? null,
+        });
+    }
 
     const publicState: DashboardData = {
         isAuthenticated: false,
@@ -158,10 +182,7 @@ export async function getDashboardData(): Promise<DashboardData> {
                     createdAt: true,
                 },
             }),
-            prisma.externalMbtiTest.findFirst({
-                where: { userId, provider: "devil.ai", status: "completed" },
-                select: { id: true },
-            }),
+            findCompletedMbtiTest(userId),
             latestProfile
                 ? prisma.bookInsight.findFirst({
                       where: { profileId: latestProfile.id },

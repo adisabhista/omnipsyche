@@ -19,6 +19,7 @@ env:
   NEXTAUTH_SECRET: ci-secret
   NEXTAUTH_URL: http://localhost:3000
   AUTH_URL: http://localhost:3000
+  AUTH_TRUST_HOST: "true"
   GEMINI_API_KEY: dummy
   DEVIL_AI_API_KEY: dummy
 
@@ -99,6 +100,7 @@ jobs:
             NODE_ENV=production
             NEXTAUTH_URL=${{ vars.NEXTAUTH_URL }}
             AUTH_URL=${{ vars.AUTH_URL }}
+            AUTH_TRUST_HOST=true
             GEMINI_API_PRIMARY_MODEL=gemini-3.5-flash
             GEMINI_API_FALLBACK_MODEL=gemini-2.5-flash
             ENABLE_AI_MODEL_FALLBACK=true
