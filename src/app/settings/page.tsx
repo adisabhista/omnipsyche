@@ -451,12 +451,12 @@ export default function SettingsPage() {
                 </div>
             </SurfaceCard>
 
-            <div className="flex flex-wrap gap-3">
+            <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap">
                 <button
                     type="button"
                     onClick={saveSettings}
                     disabled={saving}
-                    className="inline-flex items-center gap-2 rounded-lg bg-cyan-300 px-5 py-2.5 text-sm font-semibold text-slate-950 hover:bg-cyan-200 disabled:cursor-not-allowed disabled:bg-slate-300 disabled:text-slate-600"
+                    className="inline-flex w-full items-center justify-center gap-2 rounded-lg bg-cyan-300 px-5 py-2.5 text-sm font-semibold text-slate-950 hover:bg-cyan-200 disabled:cursor-not-allowed disabled:bg-slate-300 disabled:text-slate-600 sm:w-auto"
                 >
                     {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
                     {saving ? "Menyimpan pengaturan..." : "Simpan Pengaturan"}
@@ -465,7 +465,7 @@ export default function SettingsPage() {
                     type="button"
                     onClick={resetChanges}
                     disabled={saving}
-                    className="inline-flex items-center gap-2 rounded-lg border border-slate-200 px-5 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-100 disabled:cursor-not-allowed disabled:text-slate-400 dark:border-white/10 dark:text-slate-200 dark:hover:bg-white/5"
+                    className="inline-flex w-full items-center justify-center gap-2 rounded-lg border border-slate-200 px-5 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-100 disabled:cursor-not-allowed disabled:text-slate-400 dark:border-white/10 dark:text-slate-200 dark:hover:bg-white/5 sm:w-auto"
                 >
                     <RotateCcw className="h-4 w-4" />
                     Reset Perubahan

@@ -34,8 +34,8 @@ export default function RegisterForm() {
     }
 
     return (
-        <main className="min-h-screen bg-[#050608] px-4 py-10 text-slate-100">
-            <div className="mx-auto max-w-md rounded-lg border border-white/10 bg-white/[0.045] p-6 shadow-[0_20px_70px_rgba(0,0,0,0.32)]">
+        <main className="min-h-screen bg-[#050608] px-4 py-6 text-slate-100 sm:py-10">
+            <div className="mx-auto max-w-md rounded-lg border border-white/10 bg-white/[0.045] p-4 shadow-[0_20px_70px_rgba(0,0,0,0.32)] sm:p-6">
                 <p className="text-xs font-medium uppercase tracking-[0.2em] text-cyan-300">OmniPsyche</p>
                 <h1 className="mt-3 text-2xl font-semibold">Buat akun OmniPsyche</h1>
                 {error && <p className="mt-3 rounded-lg border border-red-400/20 bg-red-400/10 p-3 text-sm text-red-200">{error}</p>}

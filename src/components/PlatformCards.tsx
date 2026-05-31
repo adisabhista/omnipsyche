@@ -12,10 +12,10 @@ export function SurfaceCard({
     className?: string;
 }) {
     return (
-        <section className={clsx("rounded-lg border border-slate-200 bg-white/85 p-5 shadow-[0_20px_70px_rgba(15,23,42,0.08)] dark:border-white/10 dark:bg-white/[0.045] dark:shadow-[0_20px_70px_rgba(0,0,0,0.22)]", className)}>
+        <section className={clsx("min-w-0 rounded-lg border border-slate-200 bg-white/85 p-4 shadow-[0_20px_70px_rgba(15,23,42,0.08)] dark:border-white/10 dark:bg-white/[0.045] dark:shadow-[0_20px_70px_rgba(0,0,0,0.22)] sm:p-5", className)}>
             {eyebrow && <p className="mb-2 text-xs font-medium uppercase tracking-[0.18em] text-cyan-700 dark:text-cyan-300/80">{eyebrow}</p>}
-            <h2 className="text-lg font-semibold text-slate-950 dark:text-slate-100">{title}</h2>
-            <div className="mt-4">{children}</div>
+            <h2 className="break-words text-lg font-semibold text-slate-950 dark:text-slate-100">{title}</h2>
+            <div className="mt-4 min-w-0">{children}</div>
         </section>
     );
 }
@@ -41,9 +41,9 @@ export function ModuleCard({
 }) {
     return (
         <div className="group rounded-lg border border-slate-200 bg-slate-50 p-4 transition hover:border-cyan-400/45 hover:bg-cyan-50 dark:border-white/10 dark:bg-black/20 dark:hover:border-cyan-300/35 dark:hover:bg-cyan-300/[0.04]">
-            <div className="mb-4 flex items-center justify-between gap-3">
-                <h3 className="font-semibold text-slate-950 dark:text-slate-100">{title}</h3>
-                <span className="rounded-full border border-slate-200 px-2 py-1 text-[11px] text-slate-500 dark:border-white/10 dark:text-slate-400">{status}</span>
+            <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+                <h3 className="min-w-0 break-words font-semibold text-slate-950 dark:text-slate-100">{title}</h3>
+                <span className="shrink-0 rounded-full border border-slate-200 px-2 py-1 text-[11px] text-slate-500 dark:border-white/10 dark:text-slate-400">{status}</span>
             </div>
             <p className="text-sm leading-6 text-slate-500">{description}</p>
         </div>
@@ -60,8 +60,8 @@ export function StatusList({ items }: { items: Array<{ label: string; value: str
     return (
         <div className="space-y-3">
             {items.map((item) => (
-                <div key={item.label} className="flex items-center justify-between gap-4 border-b border-white/5 pb-3 last:border-b-0 last:pb-0">
-                    <span className="text-sm text-slate-500">{item.label}</span>
+                <div key={item.label} className="flex min-w-0 flex-wrap items-center justify-between gap-3 border-b border-white/5 pb-3 last:border-b-0 last:pb-0">
+                    <span className="min-w-0 break-words text-sm text-slate-500">{item.label}</span>
                     <StatusBadge value={item.value} variant={item.variant} />
                 </div>
             ))}

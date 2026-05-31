@@ -258,13 +258,13 @@ function CollectionRecommendationCard({
 }) {
     return (
         <article className="rounded-lg border border-white/10 bg-black/25 p-4">
-            <div className="flex items-start justify-between gap-3">
-                <div>
+            <div className="flex flex-col items-start justify-between gap-3 sm:flex-row">
+                <div className="min-w-0">
                     <p className="text-xs text-cyan-300">Urutan {book.reading_order}</p>
-                    <h3 className="mt-1 font-semibold text-slate-100">{book.title}</h3>
+                    <h3 className="mt-1 break-words font-semibold text-slate-100">{book.title}</h3>
                     <p className="mt-1 text-sm text-slate-400">{book.author || "Penulis tidak tersedia"}</p>
                 </div>
-                <div className="flex shrink-0 flex-col items-end gap-2">
+                <div className="flex shrink-0 flex-wrap gap-2 sm:flex-col sm:items-end">
                     <span className="rounded-full border border-amber-300/25 px-2 py-1 text-[11px] text-amber-200">
                         {statusLabels[book.status]}
                     </span>
@@ -287,13 +287,13 @@ function NewRecommendationCard({
 }) {
     return (
         <article className="rounded-lg border border-white/10 bg-black/25 p-4">
-            <div className="flex items-start justify-between gap-3">
-                <div>
+            <div className="flex flex-col items-start justify-between gap-3 sm:flex-row">
+                <div className="min-w-0">
                     <p className="text-xs text-cyan-300">Urutan {book.reading_order}</p>
-                    <h3 className="mt-1 font-semibold text-slate-100">{book.title}</h3>
+                    <h3 className="mt-1 break-words font-semibold text-slate-100">{book.title}</h3>
                     <p className="mt-1 text-sm text-slate-400">{book.author}</p>
                 </div>
-                <div className="flex shrink-0 flex-col items-end gap-2">
+                <div className="flex shrink-0 flex-wrap gap-2 sm:flex-col sm:items-end">
                     <span className="rounded-full border border-cyan-300/25 px-2 py-1 text-[11px] text-cyan-200">
                         {priorityLabels[book.priority] ?? book.priority}
                     </span>
@@ -809,8 +809,8 @@ export default function BukuPage() {
     }
 
     return (
-        <div className="grid gap-6 xl:grid-cols-[1fr_320px]">
-            <div className="space-y-6">
+        <div className="grid min-w-0 gap-6 xl:grid-cols-[1fr_320px]">
+            <div className="min-w-0 space-y-6">
                 {error && (
                     <div className="rounded-lg border border-red-400/25 bg-red-400/10 p-4 text-sm text-red-200">
                         {error}
@@ -828,12 +828,12 @@ export default function BukuPage() {
                 )}
 
                 <SurfaceCard title="Buku" eyebrow="Koleksi dan Rekomendasi">
-                    <div className="flex flex-wrap gap-2">
+                    <div className="flex gap-2 overflow-x-auto pb-1">
                         {tabs.map((tab) => (
                             <button
                                 key={tab.id}
                                 onClick={() => setActiveTab(tab.id)}
-                                className={`rounded-lg px-3 py-2 text-sm font-semibold transition ${
+                                className={`shrink-0 rounded-lg px-3 py-2 text-sm font-semibold transition ${
                                     activeTab === tab.id
                                         ? "bg-cyan-300 text-slate-950"
                                         : "border border-white/10 text-slate-300 hover:bg-white/5"
@@ -862,7 +862,7 @@ export default function BukuPage() {
                                 <button
                                     onClick={generateRecommendations}
                                     disabled={generating || !moduleState?.canRecommend}
-                                    className="inline-flex items-center gap-2 rounded-lg bg-cyan-300 px-4 py-2 text-sm font-semibold text-slate-950 hover:bg-cyan-200 disabled:cursor-not-allowed disabled:bg-slate-700 disabled:text-slate-400"
+                                    className="inline-flex w-full items-center justify-center gap-2 rounded-lg bg-cyan-300 px-4 py-2 text-sm font-semibold text-slate-950 hover:bg-cyan-200 disabled:cursor-not-allowed disabled:bg-slate-700 disabled:text-slate-400 sm:w-auto"
                                 >
                                     {generating ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />}
                                     {generating ? "Sedang menyusun rekomendasi buku..." : recommendation ? "Buat Ulang Rekomendasi" : "Buat Rekomendasi Buku"}
@@ -965,7 +965,7 @@ export default function BukuPage() {
                                 <button
                                     onClick={searchBooks}
                                     disabled={searching || !title.trim()}
-                                    className="mt-7 inline-flex h-10 items-center justify-center gap-2 rounded-lg bg-cyan-300 px-4 text-sm font-semibold text-slate-950 hover:bg-cyan-200 disabled:cursor-not-allowed disabled:bg-slate-700 disabled:text-slate-400"
+                                    className="inline-flex h-10 w-full items-center justify-center gap-2 rounded-lg bg-cyan-300 px-4 text-sm font-semibold text-slate-950 hover:bg-cyan-200 disabled:cursor-not-allowed disabled:bg-slate-700 disabled:text-slate-400 md:mt-7 md:w-auto"
                                 >
                                     {searching ? <Loader2 className="h-4 w-4 animate-spin" /> : <Search className="h-4 w-4" />}
                                     {searching ? "Mencari metadata buku..." : "Cari Buku"}
@@ -977,7 +977,7 @@ export default function BukuPage() {
                             <SurfaceCard title="Kandidat Buku">
                                 <div className="grid gap-4">
                                     {candidates.map((candidate) => (
-                                        <article key={`${candidate.source}-${candidate.sourceId ?? candidate.title}`} className="flex gap-4 rounded-lg border border-white/10 bg-black/25 p-4">
+                                        <article key={`${candidate.source}-${candidate.sourceId ?? candidate.title}`} className="flex min-w-0 flex-col gap-4 rounded-lg border border-white/10 bg-black/25 p-4 sm:flex-row">
                                             {candidate.thumbnail && (
                                                 <Image
                                                     src={candidate.thumbnail}
@@ -985,12 +985,12 @@ export default function BukuPage() {
                                                     width={64}
                                                     height={96}
                                                     unoptimized
-                                                    className="h-24 w-16 rounded object-cover"
+                                                    className="h-24 w-16 shrink-0 rounded object-cover"
                                                 />
                                             )}
                                             <div className="min-w-0 flex-1">
                                                 <p className="text-xs text-cyan-300">{sourceLabels[candidate.source]}</p>
-                                                <h3 className="mt-1 font-semibold text-slate-100">{candidate.title}</h3>
+                                                <h3 className="mt-1 break-words font-semibold text-slate-100">{candidate.title}</h3>
                                                 <p className="mt-1 text-sm text-slate-400">{candidate.author || "Penulis tidak tersedia"}</p>
                                                 {candidate.description && (
                                                     <p className="mt-2 text-sm leading-6 text-slate-500">{excerpt(candidate.description)}</p>
@@ -1097,7 +1097,7 @@ export default function BukuPage() {
                             ) : (
                                 <div className="grid gap-4">
                                     {filteredCollection.map((book) => (
-                                        <article key={book.id} className="flex gap-4 rounded-lg border border-white/10 bg-black/25 p-4">
+                                        <article key={book.id} className="flex min-w-0 flex-col gap-4 rounded-lg border border-white/10 bg-black/25 p-4 sm:flex-row">
                                             {book.thumbnail && (
                                                 <Image
                                                     src={book.thumbnail}
@@ -1105,11 +1105,11 @@ export default function BukuPage() {
                                                     width={64}
                                                     height={96}
                                                     unoptimized
-                                                    className="h-24 w-16 rounded object-cover"
+                                                    className="h-24 w-16 shrink-0 rounded object-cover"
                                                 />
                                             )}
                                             <div className="min-w-0 flex-1">
-                                                <h3 className="font-semibold text-slate-100">{book.title}</h3>
+                                                <h3 className="break-words font-semibold text-slate-100">{book.title}</h3>
                                                 <p className="mt-1 text-sm text-slate-400">{book.author || "Penulis tidak tersedia"}</p>
                                                 {book.categories.length > 0 && (
                                                     <p className="mt-2 text-xs text-slate-500">{book.categories.slice(0, 4).join(", ")}</p>

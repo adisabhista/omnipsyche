@@ -179,7 +179,7 @@ export default async function Home() {
                                 <p className="max-w-3xl text-sm leading-7 text-slate-600 dark:text-slate-400">
                                     {createExcerpt(data.latestAnalysis.markdown, 350)}
                                 </p>
-                                <div className="mt-5 flex items-center justify-between gap-4 border-t border-white/5 pt-4">
+                                <div className="mt-5 flex flex-col items-start justify-between gap-3 border-t border-white/5 pt-4 sm:flex-row sm:items-center sm:gap-4">
                                     <span className="text-xs text-slate-500 font-mono">Model: {data.latestAnalysis.model}</span>
                                     <Link href="/analisis" className="text-sm font-semibold text-cyan-300 hover:text-cyan-200 flex items-center gap-1">
                                         Lihat Analisis Lengkap &rarr;

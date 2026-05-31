@@ -20,6 +20,7 @@ import {
     ShieldCheck,
     Sparkles,
     UserRoundCog,
+    X,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import AuthStatus from "@/components/AuthStatus";
@@ -167,6 +168,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
     const [dashboardError, setDashboardError] = useState<string | null>(null);
     const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
     const [sidebarPreferenceLoaded, setSidebarPreferenceLoaded] = useState(false);
+    const [mobileNavOpen, setMobileNavOpen] = useState(false);
 
     useEffect(() => {
         Promise.resolve().then(() => {
@@ -179,6 +181,27 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
         if (!sidebarPreferenceLoaded) return;
         window.localStorage.setItem("omnipsyche.sidebar.collapsed", String(sidebarCollapsed));
     }, [sidebarCollapsed, sidebarPreferenceLoaded]);
+
+    useEffect(() => {
+        Promise.resolve().then(() => setMobileNavOpen(false));
+    }, [pathname]);
+
+    useEffect(() => {
+        if (!mobileNavOpen) return;
+
+        const previousOverflow = document.body.style.overflow;
+        const handleKeyDown = (event: KeyboardEvent) => {
+            if (event.key === "Escape") setMobileNavOpen(false);
+        };
+
+        document.body.style.overflow = "hidden";
+        window.addEventListener("keydown", handleKeyDown);
+
+        return () => {
+            document.body.style.overflow = previousOverflow;
+            window.removeEventListener("keydown", handleKeyDown);
+        };
+    }, [mobileNavOpen]);
 
     useEffect(() => {
         if (status === "loading") return;
@@ -234,11 +257,11 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
     }, [hasSessionUser, session?.user?.id, status, pathname]);
 
     return (
-        <div className="h-screen overflow-hidden bg-slate-50 text-slate-950 selection:bg-cyan-400/30 selection:text-cyan-950 dark:bg-[#050608] dark:text-slate-100 dark:selection:text-cyan-100">
+        <div className="min-h-screen overflow-x-hidden bg-slate-50 text-slate-950 selection:bg-cyan-400/30 selection:text-cyan-950 dark:bg-[#050608] dark:text-slate-100 dark:selection:text-cyan-100 lg:h-screen lg:overflow-hidden">
             <div className="fixed inset-0 pointer-events-none bg-[radial-gradient(circle_at_15%_10%,rgba(14,165,233,0.10),transparent_28%),radial-gradient(circle_at_85%_20%,rgba(124,58,237,0.08),transparent_30%),linear-gradient(180deg,rgba(15,23,42,0.02),transparent)] dark:bg-[radial-gradient(circle_at_15%_10%,rgba(34,211,238,0.12),transparent_28%),radial-gradient(circle_at_85%_20%,rgba(168,85,247,0.12),transparent_30%),linear-gradient(180deg,rgba(255,255,255,0.02),transparent)]" />
             <div
                 className={clsx(
-                    "relative z-10 grid h-screen min-h-0 transition-[grid-template-columns] duration-300 ease-out",
+                    "relative z-10 min-h-screen min-w-0 transition-[grid-template-columns] duration-300 ease-out lg:grid lg:h-screen lg:min-h-0",
                     sidebarCollapsed ? "lg:grid-cols-[80px_1fr]" : "lg:grid-cols-[280px_1fr]"
                 )}
             >
@@ -392,13 +415,120 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
                     )}
                 </aside>
 
-                <div className="min-h-0 min-w-0 overflow-y-auto">
+                <div
+                    className={clsx(
+                        "fixed inset-0 z-50 lg:hidden",
+                        mobileNavOpen ? "pointer-events-auto" : "pointer-events-none"
+                    )}
+                    aria-hidden={!mobileNavOpen}
+                >
+                    <div
+                        className={clsx(
+                            "absolute inset-0 bg-slate-950/55 backdrop-blur-sm transition-opacity duration-300",
+                            mobileNavOpen ? "opacity-100" : "opacity-0"
+                        )}
+                        onClick={() => setMobileNavOpen(false)}
+                    />
+                    <aside
+                        className={clsx(
+                            "absolute inset-y-0 left-0 flex w-[min(88vw,320px)] flex-col border-r border-slate-200 bg-white/95 shadow-2xl backdrop-blur-xl transition-transform duration-300 ease-out dark:border-white/10 dark:bg-[#080b10]/95",
+                            mobileNavOpen ? "translate-x-0" : "-translate-x-full"
+                        )}
+                        aria-label="Navigasi utama"
+                    >
+                        <div className="flex h-16 shrink-0 items-center gap-3 border-b border-slate-200 px-4 dark:border-white/10">
+                            <div className="grid h-10 w-10 shrink-0 place-items-center rounded-lg border border-cyan-300/30 bg-cyan-300/10 shadow-[0_0_28px_rgba(34,211,238,0.18)]">
+                                <Sparkles className="h-5 w-5 text-cyan-600 dark:text-cyan-300" />
+                            </div>
+                            <div className="min-w-0">
+                                <p className="truncate font-semibold">OmniPsyche</p>
+                                <p className="truncate text-xs text-slate-500">Intelijensi Kepribadian</p>
+                            </div>
+                            <button
+                                type="button"
+                                aria-label="Tutup menu"
+                                onClick={() => setMobileNavOpen(false)}
+                                className="ml-auto grid h-10 w-10 shrink-0 place-items-center rounded-lg border border-slate-200 text-slate-600 transition hover:border-cyan-300/45 hover:bg-cyan-50 hover:text-cyan-700 focus:outline-none focus:ring-2 focus:ring-cyan-300/45 dark:border-white/10 dark:text-slate-300 dark:hover:bg-cyan-300/10 dark:hover:text-cyan-100"
+                            >
+                                <X className="h-5 w-5" />
+                            </button>
+                        </div>
+
+                        <nav className="min-h-0 flex-1 space-y-1 overflow-y-auto px-3 py-4">
+                            {navItems.map((item) => {
+                                const Icon = item.icon;
+                                const active = item.href === activeHref;
+                                const hasChildren = !!item.children && item.children.length > 0;
+
+                                return (
+                                    <div key={item.href}>
+                                        <Link
+                                            href={item.href}
+                                            onClick={() => setMobileNavOpen(false)}
+                                            className={clsx(
+                                                "group flex items-center gap-3 rounded-lg px-3 py-3 text-sm transition focus:outline-none focus:ring-2 focus:ring-cyan-300/45",
+                                                active
+                                                    ? "bg-cyan-100 text-cyan-900 ring-1 ring-cyan-300/35 dark:bg-cyan-300/10 dark:text-cyan-100 dark:ring-cyan-300/20"
+                                                    : "text-slate-600 hover:bg-slate-100 hover:text-slate-950 dark:text-slate-400 dark:hover:bg-white/5 dark:hover:text-slate-100"
+                                            )}
+                                        >
+                                            <Icon className={clsx("h-4 w-4 shrink-0", active ? "text-cyan-600 dark:text-cyan-300" : "text-slate-500")} />
+                                            <span className="min-w-0 flex-1 truncate">{item.label}</span>
+                                            {hasChildren && <span className="text-xs text-slate-500">▸</span>}
+                                        </Link>
+                                        {hasChildren && (
+                                            <div className="ml-6 space-y-1 border-l border-slate-200 pl-3 dark:border-white/10">
+                                                {item.children!.filter((child) => typeof child.href === "string" && child.href.length > 0).map((child) => {
+                                                    const childActive = child.href === activeHref;
+
+                                                    return (
+                                                        <Link
+                                                            key={child.href}
+                                                            href={child.href}
+                                                            onClick={() => setMobileNavOpen(false)}
+                                                            className={clsx(
+                                                                "block rounded-lg px-3 py-2 text-sm transition focus:outline-none focus:ring-2 focus:ring-cyan-300/45",
+                                                                childActive
+                                                                    ? "bg-cyan-100 text-cyan-900 dark:bg-cyan-300/10 dark:text-cyan-100"
+                                                                    : "text-slate-500 hover:bg-slate-100 hover:text-slate-950 dark:text-slate-400 dark:hover:bg-white/5 dark:hover:text-slate-100"
+                                                            )}
+                                                        >
+                                                            {child.label}
+                                                        </Link>
+                                                    );
+                                                })}
+                                            </div>
+                                        )}
+                                    </div>
+                                );
+                            })}
+                        </nav>
+
+                        <div className="shrink-0 border-t border-slate-200 p-4 dark:border-white/10">
+                            <AuthStatus />
+                        </div>
+                    </aside>
+                </div>
+
+                <div className="min-h-screen min-w-0 overflow-x-hidden lg:h-screen lg:min-h-0 lg:overflow-y-auto">
                     <header className="sticky top-0 z-20 border-b border-slate-200 bg-slate-50/85 backdrop-blur-xl dark:border-white/10 dark:bg-[#050608]/85">
-                        <div className="flex min-h-20 items-center justify-between gap-4 px-4 py-4 md:px-8">
+                        <div className="flex h-14 items-center gap-3 px-4 lg:hidden">
+                            <button
+                                type="button"
+                                aria-label="Buka menu"
+                                aria-expanded={mobileNavOpen}
+                                onClick={() => setMobileNavOpen(true)}
+                                className="grid h-10 w-10 shrink-0 place-items-center rounded-lg border border-slate-200 text-slate-700 transition hover:border-cyan-300/45 hover:bg-cyan-50 hover:text-cyan-700 focus:outline-none focus:ring-2 focus:ring-cyan-300/45 dark:border-white/10 dark:text-slate-300 dark:hover:bg-cyan-300/10 dark:hover:text-cyan-100"
+                            >
+                                <Menu className="h-5 w-5" />
+                            </button>
+                            <div className="min-w-0">
+                                <p className="truncate text-sm font-semibold">OmniPsyche</p>
+                                <p className="truncate text-xs text-slate-500">{meta.title}</p>
+                            </div>
+                        </div>
+                        <div className="hidden min-h-20 items-center justify-between gap-4 px-4 py-4 md:px-8 lg:flex">
                             <div className="flex min-w-0 items-center gap-3">
-                                <button className="grid h-10 w-10 place-items-center rounded-lg border border-slate-200 text-slate-700 dark:border-white/10 dark:text-slate-300 lg:hidden">
-                                    <Menu className="h-5 w-5" />
-                                </button>
                                 <div className="min-w-0">
                                     <h1 className="truncate text-xl font-semibold md:text-2xl">{meta.title}</h1>
                                     <p className="mt-1 hidden truncate text-sm text-slate-500 sm:block">{meta.subtitle}</p>
@@ -425,7 +555,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
                             </div>
                         </div>
                     </header>
-                    <main className="px-4 py-6 md:px-8 md:py-8">{children}</main>
+                    <main className="min-w-0 overflow-x-hidden px-4 py-5 sm:px-6 sm:py-6 lg:px-8 lg:py-8">{children}</main>
                 </div>
             </div>
         </div>

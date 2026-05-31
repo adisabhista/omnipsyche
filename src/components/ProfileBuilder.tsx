@@ -209,10 +209,10 @@ export default function ProfileBuilder() {
     }
 
     return (
-        <div className="grid gap-6 xl:grid-cols-[260px_1fr_320px]">
-            <aside className="rounded-lg border border-slate-200 bg-white/80 p-3 shadow-[0_20px_70px_rgba(15,23,42,0.08)] dark:border-white/10 dark:bg-white/[0.045] dark:shadow-[0_20px_70px_rgba(0,0,0,0.22)] xl:sticky xl:top-28 xl:self-start">
+        <div className="grid min-w-0 gap-6 xl:grid-cols-[260px_1fr_320px]">
+            <aside className="min-w-0 rounded-lg border border-slate-200 bg-white/80 p-3 shadow-[0_20px_70px_rgba(15,23,42,0.08)] dark:border-white/10 dark:bg-white/[0.045] dark:shadow-[0_20px_70px_rgba(0,0,0,0.22)] xl:sticky xl:top-28 xl:self-start">
                 <p className="px-2 pb-3 pt-1 text-[11px] font-medium uppercase tracking-[0.18em] text-slate-500">Tahapan Profil</p>
-                <div className="space-y-1">
+                <div className="flex gap-2 overflow-x-auto pb-1 xl:block xl:space-y-1 xl:overflow-visible xl:pb-0">
                     {steps.map((step, index) => {
                         const active = activeStep === step;
                         const complete = stepCompletion[step];
@@ -221,7 +221,7 @@ export default function ProfileBuilder() {
                                 key={step}
                                 onClick={() => setActiveStep(step)}
                                 className={clsx(
-                                    "flex w-full items-center gap-3 rounded-lg px-3 py-3 text-left text-sm transition",
+                                    "flex shrink-0 items-center gap-3 rounded-lg px-3 py-3 text-left text-sm transition xl:w-full",
                                     active
                                         ? "bg-cyan-100 text-cyan-950 ring-1 ring-cyan-300/35 dark:bg-cyan-300/10 dark:text-cyan-100 dark:ring-cyan-300/20"
                                         : "text-slate-500 hover:bg-slate-100 hover:text-slate-950 dark:text-slate-400 dark:hover:bg-white/5 dark:hover:text-slate-100"
@@ -246,7 +246,7 @@ export default function ProfileBuilder() {
                 </div>
             </aside>
 
-            <section className="rounded-lg border border-slate-200 bg-white/85 p-5 shadow-[0_20px_70px_rgba(15,23,42,0.08)] dark:border-white/10 dark:bg-white/[0.045] dark:shadow-[0_20px_70px_rgba(0,0,0,0.22)] md:p-6">
+            <section className="min-w-0 rounded-lg border border-slate-200 bg-white/85 p-4 shadow-[0_20px_70px_rgba(15,23,42,0.08)] dark:border-white/10 dark:bg-white/[0.045] dark:shadow-[0_20px_70px_rgba(0,0,0,0.22)] sm:p-5 md:p-6">
                 <div className="mb-6 flex flex-col gap-4 border-b border-slate-200 pb-5 dark:border-white/10 sm:flex-row sm:items-start sm:justify-between">
                     <div>
                         <p className="text-xs font-medium uppercase tracking-[0.2em] text-cyan-700 dark:text-cyan-300/80">Alur Modular</p>
@@ -465,6 +465,7 @@ export default function ProfileBuilder() {
                 <div className="mt-6 flex flex-col gap-3 border-t border-slate-200 pt-5 dark:border-white/10 sm:flex-row sm:items-center sm:justify-between">
                     <ActionButton
                         type="button"
+                        className="w-full sm:w-auto"
                         onClick={() => {
                             const prevIndex = currentStepIndex - 1;
                             if (prevIndex >= 0) setActiveStep(steps[prevIndex]);
@@ -477,13 +478,14 @@ export default function ProfileBuilder() {
                     </ActionButton>
 
                     <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
-                        <ActionButton type="button" onClick={handleSave} disabled={saving} variant="primary">
+                        <ActionButton type="button" className="w-full sm:w-auto" onClick={handleSave} disabled={saving} variant="primary">
                             {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
                             {saving ? "Menyimpan..." : "Simpan Profil"}
                         </ActionButton>
 
                         <ActionButton
                             type="button"
+                            className="w-full sm:w-auto"
                             onClick={() => {
                                 const nextIndex = currentStepIndex + 1;
                                 if (nextIndex < steps.length) setActiveStep(steps[nextIndex]);

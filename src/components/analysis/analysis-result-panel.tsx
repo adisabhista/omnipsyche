@@ -24,7 +24,7 @@ function SectionCard({
     className?: string;
 }) {
     return (
-        <section className={`rounded-lg border border-slate-200 bg-white/85 p-5 shadow-[0_20px_70px_rgba(15,23,42,0.08)] dark:border-white/10 dark:bg-white/[0.045] dark:shadow-[0_20px_70px_rgba(0,0,0,0.22)] ${className ?? ""}`}>
+        <section className={`min-w-0 rounded-lg border border-slate-200 bg-white/85 p-4 shadow-[0_20px_70px_rgba(15,23,42,0.08)] dark:border-white/10 dark:bg-white/[0.045] dark:shadow-[0_20px_70px_rgba(0,0,0,0.22)] sm:p-5 ${className ?? ""}`}>
             <div className="flex items-start gap-3">
                 {Icon && (
                     <span className="grid h-9 w-9 shrink-0 place-items-center rounded-lg border border-cyan-400/25 bg-cyan-300/10">
@@ -33,17 +33,17 @@ function SectionCard({
                 )}
                 <div className="min-w-0">
                     {eyebrow && <p className="mb-2 text-xs font-medium uppercase tracking-[0.18em] text-cyan-700 dark:text-cyan-300/80">{eyebrow}</p>}
-                    <h2 className="text-lg font-semibold text-slate-950 dark:text-slate-100">{title}</h2>
+                    <h2 className="break-words text-lg font-semibold text-slate-950 dark:text-slate-100">{title}</h2>
                 </div>
             </div>
-            <div className="mt-4">{children}</div>
+            <div className="mt-4 min-w-0">{children}</div>
         </section>
     );
 }
 
 function Badge({ children }: { children: React.ReactNode }) {
     return (
-        <span className="inline-flex items-center rounded-full border border-cyan-400/25 bg-cyan-300/10 px-3 py-1 text-xs font-medium text-cyan-800 dark:text-cyan-200">
+        <span className="inline-flex max-w-full items-center break-words rounded-full border border-cyan-400/25 bg-cyan-300/10 px-3 py-1 text-xs font-medium text-cyan-800 dark:text-cyan-200">
             {children}
         </span>
     );

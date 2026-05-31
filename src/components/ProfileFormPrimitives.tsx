@@ -19,8 +19,8 @@ export function ProfileFormSection({
     className?: string;
 }) {
     return (
-        <section className={clsx("rounded-lg border border-slate-200 bg-white/80 p-5 shadow-[0_18px_58px_rgba(15,23,42,0.06)] dark:border-white/10 dark:bg-black/25 dark:shadow-none", className)}>
-            <div className="mb-5 flex items-start justify-between gap-4">
+        <section className={clsx("min-w-0 rounded-lg border border-slate-200 bg-white/80 p-4 shadow-[0_18px_58px_rgba(15,23,42,0.06)] dark:border-white/10 dark:bg-black/25 dark:shadow-none sm:p-5", className)}>
+            <div className="mb-5 flex flex-wrap items-start justify-between gap-4">
                 <div className="min-w-0">
                     <div className="flex items-center gap-3">
                         {icon && <div className="grid h-9 w-9 shrink-0 place-items-center rounded-lg border border-cyan-400/20 bg-cyan-300/10 text-cyan-600 dark:text-cyan-300">{icon}</div>}
@@ -29,7 +29,7 @@ export function ProfileFormSection({
                             <h3 className="mt-1 text-base font-semibold text-slate-950 dark:text-slate-100">{title}</h3>
                         </div>
                     </div>
-                    {description && <p className="mt-3 max-w-2xl text-sm leading-6 text-slate-500">{description}</p>}
+                    {description && <p className="mt-3 max-w-2xl break-words text-sm leading-6 text-slate-500">{description}</p>}
                 </div>
                 {action}
             </div>

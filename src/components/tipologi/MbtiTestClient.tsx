@@ -160,10 +160,10 @@ export default function MbtiTestClient({ initialTests, currentMbti }: MbtiTestCl
     }
 
     return (
-        <div className="grid gap-6 xl:grid-cols-[1fr_320px]">
-            <div className="space-y-6">
+        <div className="grid min-w-0 gap-6 xl:grid-cols-[1fr_320px]">
+            <div className="min-w-0 space-y-6">
                 {/* Header card */}
-                <section className="rounded-lg border border-slate-200 bg-white/85 p-5 shadow-[0_20px_70px_rgba(15,23,42,0.08)] dark:border-white/10 dark:bg-white/[0.045] dark:shadow-[0_20px_70px_rgba(0,0,0,0.22)]">
+                <section className="min-w-0 rounded-lg border border-slate-200 bg-white/85 p-4 shadow-[0_20px_70px_rgba(15,23,42,0.08)] dark:border-white/10 dark:bg-white/[0.045] dark:shadow-[0_20px_70px_rgba(0,0,0,0.22)] sm:p-5">
                     <p className="mb-2 text-xs font-medium uppercase tracking-[0.18em] text-cyan-700 dark:text-cyan-300/80">
                         Tes Eksternal
                     </p>
@@ -191,7 +191,7 @@ export default function MbtiTestClient({ initialTests, currentMbti }: MbtiTestCl
                 </AnimatePresence>
 
                 {/* Create section */}
-                <section className="rounded-lg border border-slate-200 bg-white/85 p-5 shadow-[0_20px_70px_rgba(15,23,42,0.08)] dark:border-white/10 dark:bg-white/[0.045] dark:shadow-[0_20px_70px_rgba(0,0,0,0.22)]">
+                <section className="min-w-0 rounded-lg border border-slate-200 bg-white/85 p-4 shadow-[0_20px_70px_rgba(15,23,42,0.08)] dark:border-white/10 dark:bg-white/[0.045] dark:shadow-[0_20px_70px_rgba(0,0,0,0.22)] sm:p-5">
                     <h3 className="font-semibold text-slate-950 dark:text-slate-100">Buat Tes Baru</h3>
                     <p className="mt-2 text-sm text-slate-500">
                         Buat tautan tes MBTI baru. Kamu akan mengerjakan tes di situs Devil.ai, lalu kembali ke sini untuk mengecek hasilnya.
@@ -201,7 +201,7 @@ export default function MbtiTestClient({ initialTests, currentMbti }: MbtiTestCl
                             id="btn-create-test"
                             onClick={handleCreateTest}
                             disabled={creatingTest}
-                            className="inline-flex items-center gap-2 rounded-lg bg-cyan-300 px-4 py-2.5 text-sm font-semibold text-slate-950 transition hover:bg-cyan-200 disabled:opacity-50 disabled:cursor-not-allowed"
+                            className="inline-flex w-full items-center justify-center gap-2 rounded-lg bg-cyan-300 px-4 py-2.5 text-sm font-semibold text-slate-950 transition hover:bg-cyan-200 disabled:cursor-not-allowed disabled:opacity-50 sm:w-auto"
                         >
                             {creatingTest ? (
                                 <>
@@ -245,7 +245,7 @@ export default function MbtiTestClient({ initialTests, currentMbti }: MbtiTestCl
 
                 {/* Check section */}
                 {activeTestId && (
-                    <section className="rounded-lg border border-slate-200 bg-white/85 p-5 shadow-[0_20px_70px_rgba(15,23,42,0.08)] dark:border-white/10 dark:bg-white/[0.045] dark:shadow-[0_20px_70px_rgba(0,0,0,0.22)]">
+                    <section className="min-w-0 rounded-lg border border-slate-200 bg-white/85 p-4 shadow-[0_20px_70px_rgba(15,23,42,0.08)] dark:border-white/10 dark:bg-white/[0.045] dark:shadow-[0_20px_70px_rgba(0,0,0,0.22)] sm:p-5">
                         <h3 className="font-semibold text-slate-950 dark:text-slate-100">Cek Hasil</h3>
                         <p className="mt-2 text-sm text-slate-500">
                             Setelah menyelesaikan tes di Devil.ai, cek hasilnya di sini.
@@ -255,7 +255,7 @@ export default function MbtiTestClient({ initialTests, currentMbti }: MbtiTestCl
                                 id="btn-check-test"
                                 onClick={() => handleCheckTest()}
                                 disabled={checkingTest}
-                                className="inline-flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 transition hover:border-cyan-300 hover:text-cyan-700 disabled:opacity-50 disabled:cursor-not-allowed dark:border-white/10 dark:bg-white/5 dark:text-slate-200 dark:hover:border-cyan-300/45 dark:hover:text-cyan-200"
+                                className="inline-flex w-full items-center justify-center gap-2 rounded-lg border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 transition hover:border-cyan-300 hover:text-cyan-700 disabled:cursor-not-allowed disabled:opacity-50 dark:border-white/10 dark:bg-white/5 dark:text-slate-200 dark:hover:border-cyan-300/45 dark:hover:text-cyan-200 sm:w-auto"
                             >
                                 {checkingTest ? (
                                     <>
@@ -290,7 +290,7 @@ export default function MbtiTestClient({ initialTests, currentMbti }: MbtiTestCl
                     {completedResult && (
                         <motion.section
                             {...cardIn}
-                            className="rounded-lg border border-emerald-200 bg-white/85 p-5 shadow-[0_20px_70px_rgba(15,23,42,0.08)] dark:border-emerald-400/15 dark:bg-white/[0.045] dark:shadow-[0_20px_70px_rgba(0,0,0,0.22)]"
+                            className="min-w-0 rounded-lg border border-emerald-200 bg-white/85 p-4 shadow-[0_20px_70px_rgba(15,23,42,0.08)] dark:border-emerald-400/15 dark:bg-white/[0.045] dark:shadow-[0_20px_70px_rgba(0,0,0,0.22)] sm:p-5"
                         >
                             <div className="flex items-center gap-2">
                                 <CheckCircle2 className="h-5 w-5 text-emerald-500" />
@@ -426,13 +426,13 @@ export default function MbtiTestClient({ initialTests, currentMbti }: MbtiTestCl
 
                 {/* History section */}
                 {tests.length > 0 && (
-                    <section className="rounded-lg border border-slate-200 bg-white/85 p-5 shadow-[0_20px_70px_rgba(15,23,42,0.08)] dark:border-white/10 dark:bg-white/[0.045] dark:shadow-[0_20px_70px_rgba(0,0,0,0.22)]">
+                    <section className="min-w-0 rounded-lg border border-slate-200 bg-white/85 p-4 shadow-[0_20px_70px_rgba(15,23,42,0.08)] dark:border-white/10 dark:bg-white/[0.045] dark:shadow-[0_20px_70px_rgba(0,0,0,0.22)] sm:p-5">
                         <h3 className="font-semibold text-slate-950 dark:text-slate-100">Riwayat Tes</h3>
                         <div className="mt-4 space-y-3">
                             {tests.map((test) => (
                                 <div
                                     key={test.id}
-                                    className="flex items-center justify-between gap-4 rounded-lg border border-slate-200 bg-slate-50 p-3 dark:border-white/10 dark:bg-black/25"
+                                    className="flex min-w-0 flex-col items-start justify-between gap-3 rounded-lg border border-slate-200 bg-slate-50 p-3 dark:border-white/10 dark:bg-black/25 sm:flex-row sm:items-center sm:gap-4"
                                 >
                                     <div className="min-w-0 flex-1">
                                         <div className="flex items-center gap-2">
@@ -453,7 +453,7 @@ export default function MbtiTestClient({ initialTests, currentMbti }: MbtiTestCl
                                             })}
                                         </p>
                                     </div>
-                                    <div className="flex items-center gap-2">
+                                    <div className="flex flex-wrap items-center gap-2">
                                         {test.status === "pending" && (
                                             <button
                                                 onClick={() => handleCheckTest(test.testId)}

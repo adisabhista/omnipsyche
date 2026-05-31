@@ -204,11 +204,11 @@ export default function ValidasiProfilPage() {
                                 Hasil ini bukan penentu tipe yang benar atau salah. Gunakan sebagai bahan refleksi.
                             </p>
                         </div>
-                        <div title={!hasProfile ? "Lengkapi profil terlebih dahulu di halaman Bangun Profil" : undefined}>
+                        <div className="w-full md:w-auto" title={!hasProfile ? "Lengkapi profil terlebih dahulu di halaman Bangun Profil" : undefined}>
                             <button
                                 onClick={handleGenerate}
                                 disabled={generating || !hasProfile}
-                                className="inline-flex items-center justify-center gap-2 rounded-lg bg-cyan-300 px-4 py-2.5 text-sm font-semibold text-slate-950 transition hover:bg-cyan-200 disabled:cursor-not-allowed disabled:opacity-60"
+                                className="inline-flex w-full items-center justify-center gap-2 rounded-lg bg-cyan-300 px-4 py-2.5 text-sm font-semibold text-slate-950 transition hover:bg-cyan-200 disabled:cursor-not-allowed disabled:opacity-60 md:w-auto"
                             >
                                 {generating ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />}
                                 {generating ? "Memeriksa konsistensi profil..." : "Cek Konsistensi Profil"}
